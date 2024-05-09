@@ -125,17 +125,38 @@ class MultiScaleSeasonMixing(nn.Module):
         #     ]
         # )
 
+        # self.down_sampling_layers = torch.nn.ModuleList(
+        #     [
+        #         nn.Sequential(
+        #             torch.nn.Linear(
+        #                 configs.seq_len // (configs.down_sampling_window ** i),
+        #                 configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+        #             ),
+        #             nn.GELU(),
+        #             torch.nn.Linear(
+        #                 configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+        #                 configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+        #             ),
+        #
+        #         )
+        #         for i in range(configs.down_sampling_layers)
+        #     ]
+        # )
+
         self.down_sampling_layers = torch.nn.ModuleList(
             [
                 nn.Sequential(
-                    torch.nn.Linear(
-                        configs.seq_len // (configs.down_sampling_window ** i),
-                        configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+                    torch.nn.Conv1d(
+                        in_channels=configs.d_model,
+                        out_channels=configs.d_model,
+                        kernel_size=1
                     ),
-                    nn.GELU(),
-                    torch.nn.Linear(
-                        configs.seq_len // (configs.down_sampling_window ** (i + 1)),
-                        configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+                    nn.ReLU(),
+                    torch.nn.Conv1d(
+                        in_channels=configs.d_model,
+                        out_channels=configs.d_model,
+                        kernel_size=1,
+                        stride=2
                     ),
 
                 )
@@ -170,17 +191,37 @@ class MultiScaleTrendMixing(nn.Module):
     def __init__(self, configs):
         super(MultiScaleTrendMixing, self).__init__()
 
+        # self.up_sampling_layers = torch.nn.ModuleList(
+        #     [
+        #         nn.Sequential(
+        #             torch.nn.Linear(
+        #                 configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+        #                 configs.seq_len // (configs.down_sampling_window ** i),
+        #             ),
+        #             nn.GELU(),
+        #             torch.nn.Linear(
+        #                 configs.seq_len // (configs.down_sampling_window ** i),
+        #                 configs.seq_len // (configs.down_sampling_window ** i),
+        #             ),
+        #         )
+        #         for i in reversed(range(configs.down_sampling_layers))
+        #     ])
+
         self.up_sampling_layers = torch.nn.ModuleList(
             [
                 nn.Sequential(
-                    torch.nn.Linear(
-                        configs.seq_len // (configs.down_sampling_window ** (i + 1)),
-                        configs.seq_len // (configs.down_sampling_window ** i),
+                    torch.nn.ConvTranspose1d(
+                        configs.d_model,
+                        configs.d_model,
+                        1
+
                     ),
-                    nn.GELU(),
-                    torch.nn.Linear(
-                        configs.seq_len // (configs.down_sampling_window ** i),
-                        configs.seq_len // (configs.down_sampling_window ** i),
+                    nn.ReLU(),
+                    torch.nn.ConvTranspose1d(
+                        configs.d_model,
+                        configs.d_model,
+                        kernel_size=2,
+                        stride=2
                     ),
                 )
                 for i in reversed(range(configs.down_sampling_layers))
@@ -238,24 +279,58 @@ class PastDecomposableMixing(nn.Module):
         # Mxing trend
         self.mixing_multi_scale_trend = MultiScaleTrendMixing(configs)
 
+        # self.out_cross_layer_test = torch.nn.ModuleList(
+        #     [
+        #         nn.Sequential(
+        #             torch.nn.Linear(
+        #                 configs.seq_len // (configs.down_sampling_window ** i),
+        #                 configs.d_ff,
+        #             ),
+        #             nn.GELU(),
+        #             torch.nn.Linear(
+        #                 configs.d_ff,
+        #                 configs.seq_len // (configs.down_sampling_window ** i),
+        #             ),
+        #
+        #         )
+        #         for i in range(configs.down_sampling_layers + 1)
+        #     ]
+        # )
+        # self.out_cross_layer_test = nn.Sequential(
+        #             torch.nn.Conv1d(
+        #                 configs.d_model,
+        #                 configs.d_ff,
+        #                 kernel_size=1
+        #             ),
+        #             nn.ReLU(),
+        #             torch.nn.Conv1d(
+        #                 configs.d_ff,
+        #                 configs.d_model,
+        #                 kernel_size=1
+        #
+        #             ),
+        #
+        #         )
         self.out_cross_layer_test = torch.nn.ModuleList(
             [
                 nn.Sequential(
-                    torch.nn.Linear(
+                    torch.nn.Conv1d(
                         configs.seq_len // (configs.down_sampling_window ** i),
                         configs.d_ff,
+                        kernel_size=1
                     ),
-                    nn.GELU(),
-                    torch.nn.Linear(
+                    nn.ReLU(),
+                    torch.nn.Conv1d(
                         configs.d_ff,
                         configs.seq_len // (configs.down_sampling_window ** i),
+                        kernel_size=1
+
                     ),
 
                 )
                 for i in range(configs.down_sampling_layers + 1)
             ]
         )
-
 
 
     #
@@ -289,8 +364,9 @@ class PastDecomposableMixing(nn.Module):
                                                       length_list):
             out = out_season + out_trend
             if self.channel_independence:
-                out = ori + self.out_cross_layer_test[i](out.permute(0,2,1)).permute(0,2,1)
-                # out = ori + self.out_cross_layer_test[i](out)
+                # out = ori + self.out_cross_layer_test(out.permute(0,2,1)).permute(0,2,1)
+                # out = ori + self.out_cross_layer_test[i](out.permute(0,2,1)).permute(0,2,1)
+                out = ori + self.out_cross_layer_test[i](out)
             out_list.append(out[:, :length, :])
         return out_list
 
@@ -318,16 +394,25 @@ class Seasonal_Prediction(nn.Module):
         # self.merge_outer = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=len(self.decomp_kernel))
         self.dataEmbedding_wo_pos = DataEmbedding_wo_pos(1, configs.d_model, configs.embed, configs.freq,
                                                          configs.dropout)
+        # self.predict_layers = torch.nn.ModuleList(
+        #     [
+        #         torch.nn.Linear(
+        #             configs.seq_len // (configs.down_sampling_window ** i),
+        #             configs.pred_len,
+        #         )
+        #         for i in range(configs.down_sampling_layers + 1)
+        #     ]
+        # )
         self.predict_layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(
+                torch.nn.Conv1d(
                     configs.seq_len // (configs.down_sampling_window ** i),
                     configs.pred_len,
+                    kernel_size=1
                 )
                 for i in range(configs.down_sampling_layers + 1)
             ]
         )
-
 
         if self.channel_independence == 1:
 
@@ -434,9 +519,8 @@ class Seasonal_Prediction(nn.Module):
             for i, enc_out in zip(range(len(x_list)), enc_out_list):
                 # dec_out = F.interpolate(enc_out.permute(0, 2, 1), size=self.configs.d_model, mode='linear', align_corners=False).permute(
                 #     0, 2, 1)  # align temporal dimension
-                dec_out = self.predict_layers[i](enc_out.permute(0, 2, 1)).permute(
-                    0, 2, 1)  # align temporal dimension
-                # dec_out = self.predict_layers[i](enc_out)# align temporal dimension
+                # dec_out = self.predict_layers[i](enc_out.permute(0, 2, 1)).permute(0, 2, 1)  # align temporal dimension
+                dec_out = self.predict_layers[i](enc_out)# align temporal dimension
                 dec_out = self.projection_layer(dec_out)
 
                 dec_out = dec_out.reshape(B, self.configs.c_out, self.configs.pred_len).permute(0, 2, 1).contiguous()
