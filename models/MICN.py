@@ -26,13 +26,13 @@ class MICN(nn.Module):
         print(configs.decomp_kernel)
         # embedding
 
-        if self.configs.use_invertembed == 1:
-            self.inverted_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-            self.inverted_embedding_wo_pos = DataEmbedding_wo_pos(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                                      configs.dropout)
-        else:
-            self.dec_embedding = DataEmbedding(dec_in, d_model, embed, freq, dropout)
+        # if self.configs.use_invertembed == 1:
+        #     self.inverted_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
+        #                                             configs.dropout)
+        #     self.inverted_embedding_wo_pos = DataEmbedding_wo_pos(configs.enc_in, configs.d_model, configs.embed, configs.freq,
+        #                                               configs.dropout)
+        # else:
+        #     self.dec_embedding = DataEmbedding(dec_in, d_model, embed, freq, dropout)
 
         self.conv_trans = Seasonal_Prediction(configs=configs,embedding_size=d_model, n_heads=n_heads, dropout=dropout,
                                      d_layers=d_layers, decomp_kernel=self.decomp_kernel, c_out=c_out, conv_kernel=conv_kernel,

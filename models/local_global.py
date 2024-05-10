@@ -184,6 +184,35 @@ class MultiScaleSeasonMixing(nn.Module):
             ]
         )
 
+    def fourier_downsampling(self,signal, downsample_factor):
+        """
+        使用傅里叶变换进行下采样
+        Args:
+        - signal: 输入的时域信号，形状为 [batch_size, seq_len, channels]
+        - downsample_factor: 下采样因子，用于指定下采样的倍率
+        Returns:
+        - downsampled_signal: 下采样后的时域信号，形状为 [batch_size, downsampled_seq_len, channels]
+        """
+        batch_size, seq_len, channels = signal.shape
+
+        # 对信号进行傅里叶变换
+        freq_signal = torch.fft.fft(signal, dim=2, norm='ortho')
+
+        # 计算下采样后的频域信号长度
+        downsampled_seq_len = channels // downsample_factor
+
+        # 仅保留频谱的前 downsampled_seq_len 个频率分量
+        freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
+
+        # 对下采样后的频域信号进行逆傅里叶变换
+        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=2)
+
+        # 取实部作为下采样后的时域信号
+        downsampled_signal = downsampled_signal.real
+
+        return downsampled_signal
+
+
     def forward(self, season_list):
 
         # mixing high->low
@@ -194,6 +223,11 @@ class MultiScaleSeasonMixing(nn.Module):
         for i in range(len(season_list) - 1):
             # out_low_res = self.down_sampling_layers[i](out_high)
             out_low_res = self.down_sampling_layers[i](out_high.permute(0,2,1)).permute(0,2,1)
+            # out_low_res = self.fourier_downsampling(out_high,2)
+
+
+
+
             out_low = out_low + out_low_res
             out_high = out_low
             if i + 2 <= len(season_list) - 1:
@@ -500,7 +534,7 @@ class Seasonal_Prediction(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
+        freq_signal = torch.fft.fft(signal, dim=2, norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
@@ -509,7 +543,7 @@ class Seasonal_Prediction(nn.Module):
         freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
 
         # 对下采样后的频域信号进行逆傅里叶变换
-        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=1)
+        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=2)
 
         # 取实部作为下采样后的时域信号
         downsampled_signal = downsampled_signal.real
