@@ -3,18 +3,17 @@ import torch
 
 from layers.StandardNorm import Normalize
 
-
-
 DECOMP_KERNELSIZE = {
-    'ECL':[13 ,17,21],
-    'WTH':[13 ,17,21],
-    'Exchange':[13,17],
-    'Traffic':[13,17,21,25],
-    'ETTm2':[13,17],
-    'ETTm1':[13,17],
-    'ETTh2':[13,17],
-    'ETTh1':[13,17],
-                     }
+    'ECL': [13, 17, 21],
+    'WTH': [13, 17, 21],
+    'Exchange': [13, 17],
+    'Traffic': [13, 17, 21, 25],
+    'ETTm2': [13, 17],
+    'ETTm1': [13, 17],
+    'ETTh2': [13, 17],
+    'ETTh1': [13, 17],
+}
+
 
 class moving_avg(nn.Module):
     """
@@ -85,17 +84,13 @@ class Conv2dMergeBlock(nn.Module):
         self.device = 'cuda:0'
 
     def forward(self, branch_list):
-        merge_list = torch.tensor([],device=self.device)
+        merge_list = torch.tensor([], device=self.device)
         for branch_item in branch_list:
             merge_list = torch.cat((merge_list, branch_item.permute(0, 2, 1).unsqueeze(1)), dim=1)
 
         merge_list = merge_list.permute(0, 3, 1, 2)
         merge_list_result = self.merge(merge_list).squeeze(-2)
         return merge_list_result
-
-
-
-
 
 
 class MultiScaleSeasonMixing(nn.Module):
@@ -157,7 +152,7 @@ class MultiScaleSeasonMixing(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fftn(signal, dim=(1,2), norm='ortho')
+        freq_signal = torch.fft.fftn(signal, dim=(1, 2), norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
@@ -166,7 +161,7 @@ class MultiScaleSeasonMixing(nn.Module):
         freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
 
         # 对下采样后的频域信号进行逆傅里叶变换
-        downsampled_signal = torch.fft.ifftn(freq_signal_downsampled,dim=(1,2))
+        downsampled_signal = torch.fft.ifftn(freq_signal_downsampled, dim=(1, 2))
 
         # 取实部作为下采样后的时域信号
         downsampled_signal = downsampled_signal.real
@@ -274,8 +269,6 @@ class PastDecomposableMixing(nn.Module):
         self.dropout = nn.Dropout(configs.dropout)
         self.channel_independence = configs.channel_independence
 
-
-
         if configs.channel_independence == 0:
             self.cross_layer = nn.Sequential(
                 nn.Linear(in_features=configs.d_model, out_features=configs.d_ff),
@@ -361,11 +354,7 @@ class PastDecomposableMixing(nn.Module):
             ]
         )
 
-
-
-
     # 提交：itransformer的embedding  后面用的全都是TimeMixer的东西，必须加上x_mark_len
-
 
     # def forward(self, x_list):
     def forward(self, x_list):
@@ -388,18 +377,17 @@ class PastDecomposableMixing(nn.Module):
             trend_list.append(trend.permute(0, 2, 1))
         # 新增将1变成d_model
 
-
         # bottom-up season mixing
         out_season_list = self.mixing_multi_scale_season(season_list)
         # top-down trend mixing
         out_trend_list = self.mixing_multi_scale_trend(trend_list)
 
         out_list = []
-        for i, ori, out_season, out_trend, length in zip( range(len(x_list)),x_list, out_season_list, out_trend_list,
-                                                      length_list):
+        for i, ori, out_season, out_trend, length in zip(range(len(x_list)), x_list, out_season_list, out_trend_list,
+                                                         length_list):
             out = out_season + out_trend
             if self.channel_independence:
-                out = ori + self.out_cross_layer_test[i](out.permute(0,2,1)).permute(0,2,1)
+                out = ori + self.out_cross_layer_test[i](out.permute(0, 2, 1)).permute(0, 2, 1)
                 # out = ori + self.out_cross_layer_test[i](out)
                 # out = ori + self.out_cross_layer(out)
             out_list.append(out[:, :length, :])
@@ -407,8 +395,8 @@ class PastDecomposableMixing(nn.Module):
 
 
 class Seasonal_Prediction(nn.Module):
-    def __init__(self, configs,embedding_size=512, n_heads=8, dropout=0.05, d_layers=1, decomp_kernel=[32], c_out=1,
-                conv_kernel=[2, 4], isometric_kernel=[18, 6], device='cuda'):
+    def __init__(self, configs, embedding_size=512, n_heads=8, dropout=0.05, d_layers=1, decomp_kernel=[32], c_out=1,
+                 conv_kernel=[2, 4], isometric_kernel=[18, 6], device='cuda'):
         super(Seasonal_Prediction, self).__init__()
         self.decomp_kernel = DECOMP_KERNELSIZE.get(configs.data)
 
@@ -425,18 +413,34 @@ class Seasonal_Prediction(nn.Module):
         self.use_fourier = configs.use_fourier
         self.use_space_merge = configs.use_space_merge
 
-        self.merge_inner = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=self.configs.down_sampling_layers + 1)
+        self.merge_inner = Conv2dMergeBlock(in_channels=configs.d_model, out_channels=configs.d_model,
+                                            num_branch=self.configs.down_sampling_layers + 1)
         # self.merge_outer = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=len(self.decomp_kernel))
+
+        # self.predict_layers = torch.nn.ModuleList(
+        #     [
+        #         torch.nn.Linear(
+        #             configs.d_model // (configs.down_sampling_window ** i),
+        #             configs.d_model,
+        #         )
+        #         for i in range(configs.down_sampling_layers + 1)
+        #     ]
+        # )
 
         self.predict_layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(
-                    configs.d_model // (configs.down_sampling_window ** i),
-                    configs.d_model,
-                )
+
+
+                    torch.nn.ConvTranspose1d(
+                        configs.d_model,
+                        configs.d_model,
+                        kernel_size=2 ** i,
+                        stride=2 ** i
+                    )
+
                 for i in range(configs.down_sampling_layers + 1)
-            ]
-        )
+            ])
+
         self.projection_layer = nn.Linear(configs.d_model, 1, bias=True)
 
         # self.predict_layers = torch.nn.ModuleList(
@@ -450,20 +454,19 @@ class Seasonal_Prediction(nn.Module):
         #     ]
         # )
 
-
         self.normalize_layers = torch.nn.ModuleList(
             [
-                Normalize(self.configs.enc_in + self.configs.x_mark_len, affine=True, non_norm=True if configs.use_norm == 0 else False)
+                Normalize(self.configs.enc_in + self.configs.x_mark_len, affine=True,
+                          non_norm=True if configs.use_norm == 0 else False)
                 for i in range(configs.down_sampling_layers + 1)
             ]
         )
 
-        self.up_to_d_model = nn.Linear(1,configs.d_model)
-
+        self.up_to_d_model = nn.Linear(1, configs.d_model)
 
     # 傅里叶下采样
 
-    def fourier_downsampling(self,signal, downsample_factor):
+    def fourier_downsampling(self, signal, downsample_factor):
         """
         使用傅里叶变换进行下采样
         Args:
@@ -475,7 +478,7 @@ class Seasonal_Prediction(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fft(signal,dim=1, norm='ortho')
+        freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
@@ -490,7 +493,6 @@ class Seasonal_Prediction(nn.Module):
         downsampled_signal = downsampled_signal.real
 
         return downsampled_signal
-
 
     def __multi_scale_process_inputs(self, x_enc, x_mark_enc):
         if self.configs.down_sampling_method == 'max':
@@ -507,11 +509,6 @@ class Seasonal_Prediction(nn.Module):
         else:
             return x_enc, x_mark_enc
 
-
-
-
-
-
         # B,T,C -> B,C,T
         x_enc = x_enc.permute(0, 2, 1)
 
@@ -527,7 +524,7 @@ class Seasonal_Prediction(nn.Module):
             if self.use_fourier == 1:
                 x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2)
             else:
-                x_enc_sampling = down_pool(x_enc_ori) # 32*12*128  --- 32*12 * 64
+                x_enc_sampling = down_pool(x_enc_ori)  # 32*12*128  --- 32*12 * 64
             x_enc_sampling_list.append(x_enc_sampling.permute(0, 2, 1))
             x_enc_ori = x_enc_sampling
 
@@ -554,7 +551,8 @@ class Seasonal_Prediction(nn.Module):
 
                 # dec_out = self.predict_layers[i](enc_out)# align temporal dimension
 
-                dec_out = dec_out.reshape(B, self.configs.x_mark_len + self.configs.enc_in, self.configs.d_model).permute(0, 2, 1).contiguous()
+                dec_out = dec_out.reshape(B, self.configs.x_mark_len + self.configs.enc_in,
+                                          self.configs.d_model).permute(0, 2, 1).contiguous()
                 dec_out_list.append(dec_out)
 
         else:
@@ -566,12 +564,10 @@ class Seasonal_Prediction(nn.Module):
 
         return dec_out_list
 
-
-
     def forward(self, dec):
-        dec  = dec.permute(0,2,1)  # 32* 128 * 12（7+5）  5.4改 32 96 128
+        dec = dec.permute(0, 2, 1)  # 32* 128 * 12（7+5）  5.4改 32 96 128
 
-        x_enc, x_mark_enc = self.__multi_scale_process_inputs(dec,None)
+        x_enc, x_mark_enc = self.__multi_scale_process_inputs(dec, None)
         x_list = []
         x_mark_list = []
         if x_mark_enc is not None:
@@ -588,10 +584,9 @@ class Seasonal_Prediction(nn.Module):
                 B, T, N = x.size()
                 x = self.normalize_layers[i](x, 'norm')
                 if self.channel_independence == 1:
-                    x = x.permute(0, 2, 1).contiguous().reshape(B * N, T,1)
+                    x = x.permute(0, 2, 1).contiguous().reshape(B * N, T, 1)
 
                 x_list.append(self.up_to_d_model(x))
-
 
         enc_out_list = x_list  # 384*128*1   384*64*1   384*32*1   384*16*1
 
@@ -604,7 +599,6 @@ class Seasonal_Prediction(nn.Module):
         else:
             dec_out = torch.stack(dec_out_list, dim=-1).sum(-1)
 
-
         # t = multi
         # merge
 
@@ -613,4 +607,3 @@ class Seasonal_Prediction(nn.Module):
         result = self.normalize_layers[0](dec_out, 'denorm')
 
         return result
-
