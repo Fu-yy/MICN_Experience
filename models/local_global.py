@@ -123,27 +123,27 @@ class MultiScaleSeasonMixing(nn.Module):
         #         for i in range(configs.down_sampling_layers)
         #     ]
         # )
-        self.down_sampling_layers = torch.nn.ModuleList(
-            [
-                nn.Sequential(
-
-                    torch.nn.Conv1d(
-                        configs.d_model,
-                        configs.d_model,
-                        1
-                    ),
-                    nn.ReLU(),
-                    torch.nn.Conv1d(
-                        configs.d_model,
-                        configs.d_model,
-                        1,
-                        stride=2
-                    ),
-
-                )
-                for i in range(configs.down_sampling_layers)
-            ]
-        )
+        # self.down_sampling_layers = torch.nn.ModuleList(
+        #     [
+        #         nn.Sequential(
+        #
+        #             torch.nn.Conv1d(
+        #                 configs.d_model,
+        #                 configs.d_model,
+        #                 1
+        #             ),
+        #             nn.ReLU(),
+        #             torch.nn.Conv1d(
+        #                 configs.d_model,
+        #                 configs.d_model,
+        #                 1,
+        #                 stride=2
+        #             ),
+        #
+        #         )
+        #         for i in range(configs.down_sampling_layers)
+        #     ]
+        # )
 
     def season_fourier_downsampling(self, signal, downsample_factor):
         """
@@ -157,7 +157,7 @@ class MultiScaleSeasonMixing(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
+        freq_signal = torch.fft.fftn(signal, dim=(1,2), norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
@@ -166,7 +166,7 @@ class MultiScaleSeasonMixing(nn.Module):
         freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
 
         # 对下采样后的频域信号进行逆傅里叶变换
-        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=1)
+        downsampled_signal = torch.fft.ifftn(freq_signal_downsampled,dim=(1,2))
 
         # 取实部作为下采样后的时域信号
         downsampled_signal = downsampled_signal.real
@@ -181,8 +181,8 @@ class MultiScaleSeasonMixing(nn.Module):
         out_season_list = [out_high.permute(0, 2, 1)]
 
         for i in range(len(season_list) - 1):
-            out_low_res = self.down_sampling_layers[i](out_high)
-            # out_low_res = self.season_fourier_downsampling(out_high, 2)
+            # out_low_res = self.down_sampling_layers[i](out_high)
+            out_low_res = self.season_fourier_downsampling(out_high, 2)
             # out_low_res = self.down_sampling_layers[i](out_high.permute(0,2,1)).permute(0,2,1)
             out_low = out_low + out_low_res
             out_high = out_low
@@ -295,7 +295,11 @@ class PastDecomposableMixing(nn.Module):
         #     nn.Linear(in_features=configs.d_ff, out_features=1),
         # )
 
-
+        # self.out_cross_layer = nn.Sequential(
+        #     nn.Linear(in_features=configs.d_model, out_features=configs.d_ff),
+        #     nn.GELU(),
+        #     nn.Linear(in_features=configs.d_ff, out_features=configs.d_model),
+        # )
 
         # self.out_cross_layer_test = torch.nn.ModuleList(
         #     [
@@ -305,7 +309,7 @@ class PastDecomposableMixing(nn.Module):
         #                 configs.d_ff,
         #                 kernel_size=1
         #             ),
-        #             nn.GELU(),
+        #             nn.ReLU(),
         #             torch.nn.Conv1d(
         #                 configs.d_ff,
         #                 configs.d_model // (configs.down_sampling_window ** i),
@@ -326,7 +330,7 @@ class PastDecomposableMixing(nn.Module):
         #                 configs.d_ff,
         #                 kernel_size=1
         #             ),
-        #             nn.GELU(),
+        #             nn.ReLU(),
         #             torch.nn.Conv1d(
         #                 configs.d_ff,
         #                 configs.d_model,
@@ -397,6 +401,7 @@ class PastDecomposableMixing(nn.Module):
             if self.channel_independence:
                 out = ori + self.out_cross_layer_test[i](out.permute(0,2,1)).permute(0,2,1)
                 # out = ori + self.out_cross_layer_test[i](out)
+                # out = ori + self.out_cross_layer(out)
             out_list.append(out[:, :length, :])
         return out_list
 
@@ -470,7 +475,7 @@ class Seasonal_Prediction(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
+        freq_signal = torch.fft.fft(signal,dim=1, norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
