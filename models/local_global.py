@@ -100,24 +100,25 @@ class MultiScaleSeasonMixing(nn.Module):
 
     def __init__(self, configs):
         super(MultiScaleSeasonMixing, self).__init__()
+        self.configs = configs
+        if configs.season_use_fourier == 0:
+            self.down_sampling_layers = torch.nn.ModuleList(
+                [
+                    nn.Sequential(
+                        torch.nn.Linear(
+                            configs.d_model // (configs.down_sampling_window ** i),
+                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
+                        ),
+                        nn.GELU(),
+                        torch.nn.Linear(
+                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
+                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
+                        ),
 
-        # self.down_sampling_layers = torch.nn.ModuleList(
-        #     [
-        #         nn.Sequential(
-        #             torch.nn.Linear(
-        #                 configs.d_model // (configs.down_sampling_window ** i),
-        #                 configs.d_model // (configs.down_sampling_window ** (i + 1)),
-        #             ),
-        #             nn.GELU(),
-        #             torch.nn.Linear(
-        #                 configs.d_model // (configs.down_sampling_window ** (i + 1)),
-        #                 configs.d_model // (configs.down_sampling_window ** (i + 1)),
-        #             ),
-        #
-        #         )
-        #         for i in range(configs.down_sampling_layers)
-        #     ]
-        # )
+                    )
+                    for i in range(configs.down_sampling_layers)
+                ]
+            )
         # self.down_sampling_layers = torch.nn.ModuleList(
         #     [
         #         nn.Sequential(
@@ -176,8 +177,10 @@ class MultiScaleSeasonMixing(nn.Module):
         out_season_list = [out_high.permute(0, 2, 1)]
 
         for i in range(len(season_list) - 1):
-            # out_low_res = self.down_sampling_layers[i](out_high)
-            out_low_res = self.season_fourier_downsampling(out_high, 2)
+            if self.configs.season_use_fourier == 0:
+                out_low_res = self.down_sampling_layers[i](out_high)
+            else:
+                out_low_res = self.season_fourier_downsampling(out_high, 2)
             # out_low_res = self.down_sampling_layers[i](out_high.permute(0,2,1)).permute(0,2,1)
             out_low = out_low + out_low_res
             out_high = out_low
@@ -195,7 +198,7 @@ class MultiScaleTrendMixing(nn.Module):
 
     def __init__(self, configs):
         super(MultiScaleTrendMixing, self).__init__()
-
+        self.configs = configs
         # self.up_sampling_layers = torch.nn.ModuleList(
         #     [
         #         nn.Sequential(
@@ -211,26 +214,42 @@ class MultiScaleTrendMixing(nn.Module):
         #         )
         #         for i in reversed(range(configs.down_sampling_layers))
         #     ])
+        if configs.trend_use_conv == 1:
+            self.up_sampling_layers = torch.nn.ModuleList(
+                [
+                    nn.Sequential(
+                        torch.nn.ConvTranspose1d(
+                            configs.d_model,
+                            configs.d_model,
+                            1
 
-        self.up_sampling_layers = torch.nn.ModuleList(
-            [
-                nn.Sequential(
-                    torch.nn.ConvTranspose1d(
-                        configs.d_model,
-                        configs.d_model,
-                        1
-
-                    ),
-                    nn.ReLU(),
-                    torch.nn.ConvTranspose1d(
-                        configs.d_model,
-                        configs.d_model,
-                        kernel_size=2,
-                        stride=2
-                    ),
-                )
-                for i in reversed(range(configs.down_sampling_layers))
-            ])
+                        ),
+                        nn.ReLU(),
+                        torch.nn.ConvTranspose1d(
+                            configs.d_model,
+                            configs.d_model,
+                            kernel_size=2,
+                            stride=2
+                        ),
+                    )
+                    for i in reversed(range(configs.down_sampling_layers))
+                ])
+        else:
+            self.up_sampling_layers = torch.nn.ModuleList(
+                [
+                    nn.Sequential(
+                        torch.nn.Linear(
+                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
+                            configs.d_model // (configs.down_sampling_window ** i),
+                        ),
+                        nn.GELU(),
+                        torch.nn.Linear(
+                            configs.d_model // (configs.down_sampling_window ** i),
+                            configs.d_model // (configs.down_sampling_window ** i),
+                        ),
+                    )
+                    for i in reversed(range(configs.down_sampling_layers))
+                ])
 
     def forward(self, trend_list):
 
@@ -426,20 +445,30 @@ class Seasonal_Prediction(nn.Module):
         #         for i in range(configs.down_sampling_layers + 1)
         #     ]
         # )
+        if configs.pred_use_conv == 1:
+            self.predict_layers = torch.nn.ModuleList(
+                [
 
-        self.predict_layers = torch.nn.ModuleList(
-            [
 
+                        torch.nn.ConvTranspose1d(
+                            configs.d_model,
+                            configs.d_model,
+                            kernel_size=2 ** i,
+                            stride=2 ** i
+                        )
 
-                    torch.nn.ConvTranspose1d(
+                    for i in range(configs.down_sampling_layers + 1)
+                ])
+        else:
+            self.predict_layers = torch.nn.ModuleList(
+                [
+                    torch.nn.Linear(
+                        configs.d_model // (configs.down_sampling_window ** i),
                         configs.d_model,
-                        configs.d_model,
-                        kernel_size=2 ** i,
-                        stride=2 ** i
                     )
-
-                for i in range(configs.down_sampling_layers + 1)
-            ])
+                    for i in range(configs.down_sampling_layers + 1)
+                ]
+            )
 
         self.projection_layer = nn.Linear(configs.d_model, 1, bias=True)
 

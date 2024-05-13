@@ -41,6 +41,8 @@ class MICN(nn.Module):
         self.regression = nn.Linear(seq_len, out_len)
         self.regression.weight = nn.Parameter((1/out_len) * torch.ones([out_len, seq_len]), requires_grad=True)
 
+
+
         self.projector = nn.Linear(configs.d_model, configs.pred_len, bias=True)
 
 
@@ -65,6 +67,7 @@ class MICN(nn.Module):
             seasonal_init_enc, trend = self.decomp_multi(x_enc)
             # x_mark_enc_seasonal_init_enc, _ = self.decomp_multi(x_mark_enc)
             trend = self.regression(trend.permute(0,2,1)).permute(0, 2, 1)
+
         elif self.mode == 'mean':
             decomp_mean = torch.mean(x_enc, dim=1).unsqueeze(1).repeat(1, self.pred_len, 1)
             # x_mark_enc_seasonal_init_enc, _ = self.decomp_multi(x_mark_enc)
@@ -89,6 +92,7 @@ class MICN(nn.Module):
             dec_out = self.dec_embedding(seasonal_init_dec, x_mark_dec)
 
         dec_out = self.conv_trans(dec_out)
+        # dec_out = self.conv_trans(dec_out)
 
 
 
