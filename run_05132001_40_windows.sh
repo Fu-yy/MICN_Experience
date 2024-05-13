@@ -106,7 +106,7 @@ ETTm1_x_mark_len=5
 
 #  m2 2分解核
 
-if false; then
+#if false; then
 
 # m2 d_model= d_ff = 128
   for pred_len in 96 192 336 720; do
@@ -397,4 +397,4 @@ for pred_len in 96 192 336 720; do
 
 
 
-fi
+#fi
