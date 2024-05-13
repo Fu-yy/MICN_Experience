@@ -84,19 +84,19 @@ class MICN(nn.Module):
         _,_, ss =seasonal_init_dec.shape
         _,_, xh =x_mark_enc.shape
 
-        if self.configs.use_invertembed == 1:
-            # dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_dec)
-            dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
-            # dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
-        else:
-            dec_out = self.dec_embedding(seasonal_init_dec, x_mark_dec)
+        # if self.configs.use_invertembed == 1:
+        #     # dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_dec)
+        #     dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
+        #     # dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
+        # else:
+        #     dec_out = self.dec_embedding(seasonal_init_dec, x_mark_dec)
 
-        dec_out = self.conv_trans(dec_out)
+        dec_out = self.conv_trans(seasonal_init_dec,x_mark_enc)
         # dec_out = self.conv_trans(dec_out)
 
 
 
-        dec_out = self.projector(dec_out.permute(0, 2, 1)).permute(0, 2, 1)[:, :, :N] # filter the covariates
+        # dec_out = self.projector(dec_out.permute(0, 2, 1)).permute(0, 2, 1)[:, :, :N] # filter the covariates
 
         # 2024.4.1新增 begin
 

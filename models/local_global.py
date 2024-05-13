@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 
+from layers.Embed import DataEmbedding_wo_pos
 from layers.StandardNorm import Normalize
 
 DECOMP_KERNELSIZE = {
@@ -106,13 +107,13 @@ class MultiScaleSeasonMixing(nn.Module):
                 [
                     nn.Sequential(
                         torch.nn.Linear(
-                            configs.d_model // (configs.down_sampling_window ** i),
-                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
+                            configs.seq_len // (configs.down_sampling_window ** i),
+                            configs.seq_len // (configs.down_sampling_window ** (i + 1)),
                         ),
                         nn.GELU(),
                         torch.nn.Linear(
-                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
-                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
+                            configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+                            configs.seq_len // (configs.down_sampling_window ** (i + 1)),
                         ),
 
                     )
@@ -301,60 +302,6 @@ class PastDecomposableMixing(nn.Module):
         # Mxing trend
         self.mixing_multi_scale_trend = MultiScaleTrendMixing(configs)
 
-        # self.out_cross_layer = nn.Sequential(
-        #     nn.Linear(in_features=1, out_features=configs.d_ff),
-        #     nn.GELU(),
-        #     nn.Linear(in_features=configs.d_ff, out_features=1),
-        # )
-
-        # self.out_cross_layer = nn.Sequential(
-        #     nn.Linear(in_features=configs.d_model, out_features=configs.d_ff),
-        #     nn.GELU(),
-        #     nn.Linear(in_features=configs.d_ff, out_features=configs.d_model),
-        # )
-
-        # self.out_cross_layer_test = torch.nn.ModuleList(
-        #     [
-        #         nn.Sequential(
-        #             torch.nn.Conv1d(
-        #                 configs.d_model // (configs.down_sampling_window ** i),
-        #                 configs.d_ff,
-        #                 kernel_size=1
-        #             ),
-        #             nn.ReLU(),
-        #             torch.nn.Conv1d(
-        #                 configs.d_ff,
-        #                 configs.d_model // (configs.down_sampling_window ** i),
-        #                 kernel_size=1
-        #
-        #             ),
-        #
-        #         )
-        #         for i in range(configs.down_sampling_layers + 1)
-        #     ]
-        # )
-
-        # self.out_cross_layer_test = torch.nn.ModuleList(
-        #     [
-        #         nn.Sequential(
-        #             torch.nn.Conv1d(
-        #                 configs.d_model,
-        #                 configs.d_ff,
-        #                 kernel_size=1
-        #             ),
-        #             nn.ReLU(),
-        #             torch.nn.Conv1d(
-        #                 configs.d_ff,
-        #                 configs.d_model,
-        #                 kernel_size=1
-        #
-        #             ),
-        #
-        #         )
-        #         for i in range(configs.down_sampling_layers + 1)
-        #     ]
-        # )
-
         self.out_cross_layer_test = torch.nn.ModuleList(
             [
                 nn.Sequential(
@@ -428,6 +375,10 @@ class Seasonal_Prediction(nn.Module):
         self.decomp_layer = [series_decomp(k) for k in self.decomp_kernel]
         self.pdm_blocks = nn.ModuleList([PastDecomposableMixing(configs)
                                          for _ in range(configs.e_layers)])
+        self.dataEmbedding_wo_pos = DataEmbedding_wo_pos(1, configs.d_model, configs.embed, configs.freq,
+                                                         configs.dropout)
+
+
         # 消融 fourier
         self.use_fourier = configs.use_fourier
         self.use_space_merge = configs.use_space_merge
@@ -485,13 +436,13 @@ class Seasonal_Prediction(nn.Module):
 
         self.normalize_layers = torch.nn.ModuleList(
             [
-                Normalize(self.configs.enc_in + self.configs.x_mark_len, affine=True,
+                Normalize(self.configs.enc_in, affine=True,
                           non_norm=True if configs.use_norm == 0 else False)
                 for i in range(configs.down_sampling_layers + 1)
             ]
         )
 
-        self.up_to_d_model = nn.Linear(1, configs.d_model)
+        # self.up_to_d_model = nn.Linear(1, configs.d_model)
 
     # 傅里叶下采样
 
@@ -517,11 +468,22 @@ class Seasonal_Prediction(nn.Module):
 
         # 对下采样后的频域信号进行逆傅里叶变换
         downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=1)
-
+        # downsampled_signal = freq_signal_downsampled
         # 取实部作为下采样后的时域信号
         downsampled_signal = downsampled_signal.real
 
         return downsampled_signal
+    def pre_enc(self, x_list):
+        if self.channel_independence == 1:
+            return (x_list, None)
+        else:
+            out1_list = []
+            out2_list = []
+            for x in x_list:
+                x_1, x_2 = self.preprocess(x)
+                out1_list.append(x_1)
+                out2_list.append(x_2)
+            return (out1_list, out2_list)
 
     def __multi_scale_process_inputs(self, x_enc, x_mark_enc):
         if self.configs.down_sampling_method == 'max':
@@ -593,10 +555,10 @@ class Seasonal_Prediction(nn.Module):
 
         return dec_out_list
 
-    def forward(self, dec):
-        dec = dec.permute(0, 2, 1)  # 32* 128 * 12（7+5）  5.4改 32 96 128
+    def forward(self, dec,x_mark):
+        # dec = dec.permute(0, 2, 1)  # 32* 128 * 12（7+5）  5.4改 32 96 128
 
-        x_enc, x_mark_enc = self.__multi_scale_process_inputs(dec, None)
+        x_enc, x_mark_enc = self.__multi_scale_process_inputs(dec, x_mark)
         x_list = []
         x_mark_list = []
         if x_mark_enc is not None:
@@ -617,7 +579,17 @@ class Seasonal_Prediction(nn.Module):
 
                 x_list.append(self.up_to_d_model(x))
 
-        enc_out_list = x_list  # 384*128*1   384*64*1   384*32*1   384*16*1
+        # embedding
+        enc_out_list = []
+        x_list = self.pre_enc(x_list)
+        if x_mark_enc is not None:
+            for i, x, x_mark in zip(range(len(x_list[0])), x_list[0], x_mark_list):
+                enc_out = self.dataEmbedding_wo_pos(x, x_mark)  # [B,T,C]
+                enc_out_list.append(enc_out)
+        else:
+            for i, x in zip(range(len(x_list[0])), x_list[0]):
+                enc_out = self.dataEmbedding_wo_pos(x, None)  # [B,T,C]
+                enc_out_list.append(enc_out)
 
         for j in range(self.e_layers):
             enc_out_list = self.pdm_blocks[j](enc_out_list)
