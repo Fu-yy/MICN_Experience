@@ -170,27 +170,33 @@ class MultiScaleSeasonMixing(nn.Module):
 
         return downsampled_signal
 
-    def forward(self, season_list):
+    # def forward(self, season_list):
+    #
+    #     # mixing high->low
+    #     out_high = season_list[0]
+    #     out_low = season_list[1]
+    #     out_season_list = [out_high.permute(0, 2, 1)]
+    #
+    #     for i in range(len(season_list) - 1):
+    #         if self.configs.season_use_fourier == 0:
+    #             out_low_res = self.down_sampling_layers[i](out_high)
+    #         else:
+    #             out_low_res = self.season_fourier_downsampling(out_high, 2)
+    #         # out_low_res = self.down_sampling_layers[i](out_high.permute(0,2,1)).permute(0,2,1)
+    #         out_low = out_low + out_low_res
+    #         out_high = out_low
+    #         if i + 2 <= len(season_list) - 1:
+    #             out_low = season_list[i + 2]
+    #         out_season_list.append(out_high.permute(0, 2, 1))
+    #
+    #     return out_season_list
 
-        # mixing high->low
-        out_high = season_list[0]
-        out_low = season_list[1]
-        out_season_list = [out_high.permute(0, 2, 1)]
 
-        for i in range(len(season_list) - 1):
-            if self.configs.season_use_fourier == 0:
-                out_low_res = self.down_sampling_layers[i](out_high)
-            else:
-                out_low_res = self.season_fourier_downsampling(out_high, 2)
-            # out_low_res = self.down_sampling_layers[i](out_high.permute(0,2,1)).permute(0,2,1)
-            out_low = out_low + out_low_res
-            out_high = out_low
-            if i + 2 <= len(season_list) - 1:
-                out_low = season_list[i + 2]
-            out_season_list.append(out_high.permute(0, 2, 1))
-
-        return out_season_list
-
+    def forward(self,season_list):
+        result_list = []
+        for i in season_list:
+            result_list.append(i.permute(0, 2, 1))
+        return result_list
 
 class MultiScaleTrendMixing(nn.Module):
     """
@@ -220,15 +226,15 @@ class MultiScaleTrendMixing(nn.Module):
                 [
                     nn.Sequential(
                         torch.nn.ConvTranspose1d(
-                            configs.d_model,
-                            configs.d_model,
+                            configs.seq_len,
+                            configs.seq_len,
                             1
 
                         ),
                         nn.ReLU(),
                         torch.nn.ConvTranspose1d(
-                            configs.d_model,
-                            configs.d_model,
+                            configs.seq_len,
+                            configs.seq_len,
                             kernel_size=2,
                             stride=2
                         ),
@@ -240,37 +246,43 @@ class MultiScaleTrendMixing(nn.Module):
                 [
                     nn.Sequential(
                         torch.nn.Linear(
-                            configs.d_model // (configs.down_sampling_window ** (i + 1)),
-                            configs.d_model // (configs.down_sampling_window ** i),
+                            configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+                            configs.seq_len // (configs.down_sampling_window ** i),
                         ),
                         nn.GELU(),
                         torch.nn.Linear(
-                            configs.d_model // (configs.down_sampling_window ** i),
-                            configs.d_model // (configs.down_sampling_window ** i),
+                            configs.seq_len // (configs.down_sampling_window ** i),
+                            configs.seq_len // (configs.down_sampling_window ** i),
                         ),
                     )
                     for i in reversed(range(configs.down_sampling_layers))
                 ])
 
-    def forward(self, trend_list):
+    # def forward(self, trend_list):
+    #
+    #     # mixing low->high
+    #     trend_list_reverse = trend_list.copy()
+    #     trend_list_reverse.reverse()
+    #     out_low = trend_list_reverse[0]
+    #     out_high = trend_list_reverse[1]
+    #     out_trend_list = [out_low.permute(0, 2, 1)]
+    #
+    #     for i in range(len(trend_list_reverse) - 1):
+    #         out_high_res = self.up_sampling_layers[i](out_low)
+    #         out_high = out_high + out_high_res
+    #         out_low = out_high
+    #         if i + 2 <= len(trend_list_reverse) - 1:
+    #             out_high = trend_list_reverse[i + 2]
+    #         out_trend_list.append(out_low.permute(0, 2, 1))
+    #
+    #     out_trend_list.reverse()
+    #     return out_trend_list
 
-        # mixing low->high
-        trend_list_reverse = trend_list.copy()
-        trend_list_reverse.reverse()
-        out_low = trend_list_reverse[0]
-        out_high = trend_list_reverse[1]
-        out_trend_list = [out_low.permute(0, 2, 1)]
-
-        for i in range(len(trend_list_reverse) - 1):
-            out_high_res = self.up_sampling_layers[i](out_low)
-            out_high = out_high + out_high_res
-            out_low = out_high
-            if i + 2 <= len(trend_list_reverse) - 1:
-                out_high = trend_list_reverse[i + 2]
-            out_trend_list.append(out_low.permute(0, 2, 1))
-
-        out_trend_list.reverse()
-        return out_trend_list
+    def forward(self, season_list):
+        result_list = []
+        for i in season_list:
+            result_list.append(i.permute(0, 2, 1))
+        return result_list
 
 
 class PastDecomposableMixing(nn.Module):
@@ -458,7 +470,7 @@ class Seasonal_Prediction(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
+        freq_signal = torch.fft.fft(signal, dim=2, norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
@@ -467,7 +479,7 @@ class Seasonal_Prediction(nn.Module):
         freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
 
         # 对下采样后的频域信号进行逆傅里叶变换
-        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=1)
+        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=2)
         # downsampled_signal = freq_signal_downsampled
         # 取实部作为下采样后的时域信号
         downsampled_signal = downsampled_signal.real
@@ -513,11 +525,11 @@ class Seasonal_Prediction(nn.Module):
 
         for i in range(self.configs.down_sampling_layers):
             if self.use_fourier == 1:
-                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2)
+                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2**(i+1))
             else:
                 x_enc_sampling = down_pool(x_enc_ori)  # 32*12*128  --- 32*12 * 64
             x_enc_sampling_list.append(x_enc_sampling.permute(0, 2, 1))
-            x_enc_ori = x_enc_sampling
+            # x_enc_ori = x_enc_sampling
 
             if x_mark_enc is not None:
                 x_mark_sampling_list.append(x_mark_enc_mark_ori[:, ::self.configs.down_sampling_window, :])
