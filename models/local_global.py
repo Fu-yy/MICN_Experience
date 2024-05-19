@@ -364,11 +364,12 @@ class PastDecomposableMixing(nn.Module):
         for i, ori, out_season, out_trend, length in zip(range(len(x_list)), x_list, out_season_list, out_trend_list,
                                                          length_list):
             out = out_season + out_trend
-            if self.channel_independence:
-                out = ori + self.out_cross_layer_test[i](out.permute(0, 2, 1)).permute(0, 2, 1)
-                # out = ori + self.out_cross_layer_test[i](out)
-                # out = ori + self.out_cross_layer(out)
-            out_list.append(out[:, :length, :])
+            # if self.channel_independence:
+            #     out = ori + self.out_cross_layer_test[i](out.permute(0, 2, 1)).permute(0, 2, 1)
+            #     # out = ori + self.out_cross_layer_test[i](out)
+            #     # out = ori + self.out_cross_layer(out)
+            # out_list.append(out[:, :length, :])
+            out_list.append(out)
         return out_list
 
 
@@ -395,7 +396,7 @@ class Seasonal_Prediction(nn.Module):
         self.use_fourier = configs.use_fourier
         self.use_space_merge = configs.use_space_merge
 
-        self.merge_inner = Conv2dMergeBlock(in_channels=configs.d_model, out_channels=configs.d_model,
+        self.merge_inner = Conv2dMergeBlock(in_channels=configs.seq_len, out_channels=configs.seq_len,
                                             num_branch=self.configs.down_sampling_layers + 1)
         # self.merge_outer = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=len(self.decomp_kernel))
 
@@ -426,8 +427,8 @@ class Seasonal_Prediction(nn.Module):
             self.predict_layers = torch.nn.ModuleList(
                 [
                     torch.nn.Linear(
-                        configs.d_model // (configs.down_sampling_window ** i),
-                        configs.d_model,
+                        configs.seq_len // (configs.down_sampling_window ** i),
+                        configs.pred_len,
                     )
                     for i in range(configs.down_sampling_layers + 1)
                 ]
@@ -547,15 +548,14 @@ class Seasonal_Prediction(nn.Module):
             for i, enc_out in zip(range(len(x_list)), enc_out_list):
                 # dec_out = F.interpolate(enc_out.permute(0, 2, 1), size=self.configs.d_model, mode='linear', align_corners=False).permute(
                 #     0, 2, 1)  # align temporal dimension
-                dec_out = self.predict_layers[i](enc_out.permute(0, 2, 1)).permute(
-                    0, 2, 1)  # align temporal dimension
+                # dec_out = self.predict_layers[i](enc_out)  # align temporal dimension
+                dec_out = self.predict_layers[i](enc_out.permute(0, 2, 1)).permute(0, 2, 1)  # align temporal dimension
 
                 dec_out = self.projection_layer(dec_out)
 
                 # dec_out = self.predict_layers[i](enc_out)# align temporal dimension
 
-                dec_out = dec_out.reshape(B, self.configs.x_mark_len + self.configs.enc_in,
-                                          self.configs.d_model).permute(0, 2, 1).contiguous()
+                dec_out = dec_out.reshape(B,  self.configs.c_out,self.configs.pred_len).permute(0, 2, 1).contiguous()
                 dec_out_list.append(dec_out)
 
         else:
