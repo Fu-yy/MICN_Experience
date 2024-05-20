@@ -472,3 +472,51 @@ mse:0.178339883685112, mae:0.2640654146671295
 micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
 mse:0.18562668561935425, mae:0.27217787504196167
 
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.183191180229187, mae:0.26917776465415955
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18213778734207153, mae:0.263440877199173
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.1794424057006836, mae:0.26235541701316833
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.1794424057006836, mae:0.26235541701316833
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18943741917610168, mae:0.274509996175766
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18869255483150482, mae:0.2726462781429291
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.1783348172903061, mae:0.2611584961414337
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18997368216514587, mae:0.2738819420337677
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18467290699481964, mae:0.2715824544429779
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.17889130115509033, mae:0.26282253861427307
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.17839965224266052, mae:0.2622758448123932
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.17853328585624695, mae:0.26248374581336975
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18531917035579681, mae:0.27500516176223755
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.18601708114147186, mae:0.2763563394546509
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.17856012284755707, mae:0.2625189423561096
+
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.17593993246555328, mae:0.2601326107978821
+
