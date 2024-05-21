@@ -395,8 +395,8 @@ class PastDecomposableMixing(nn.Module):
                                                       length_list):
             out = out_season + out_trend
             if self.channel_independence:
-                # out = ori + self.out_cross_layer_test[i](out.permute(0,2,1)).permute(0,2,1)
-                out = ori + self.out_cross_layer_test[i](out)
+                out = ori + self.out_cross_layer_test[i](out.permute(0,2,1)).permute(0,2,1)
+                # out = ori + self.out_cross_layer_test[i](out)
             out_list.append(out[:, :length, :])
         return out_list
 
