@@ -110,6 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('--pred_use_conv', type=int, default=1,help='pred_use_conv')
     parser.add_argument('--season_use_fourier', type=int, default=1,help='season_use_forier')
     parser.add_argument('--trend_use_conv', type=int, default=1,help='trend_use_conv')
+    parser.add_argument('--cut_freq', type=int, default=10,help='cut_freq')
 
 
     args = parser.parse_args()
@@ -169,6 +170,8 @@ if __name__ == '__main__':
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
+        if hasattr(torch.cuda, 'empty_cache'):
+            torch.cuda.empty_cache()
         exp.train(setting)
 
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))

@@ -207,6 +207,7 @@ class MultiScaleSeasonMixing(nn.Module):
         #         for i in range(configs.down_sampling_layers +1)
         #     ]
         # )
+
     def season_fourier_downsampling(self, signal, downsample_factor):
         """
         使用傅里叶变换进行下采样
@@ -219,7 +220,7 @@ class MultiScaleSeasonMixing(nn.Module):
         batch_size, seq_len, channels = signal.shape
 
         # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fftn(signal, dim=(1, 2), norm='ortho')
+        freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
 
         # 计算下采样后的频域信号长度
         downsampled_seq_len = channels // downsample_factor
@@ -228,7 +229,7 @@ class MultiScaleSeasonMixing(nn.Module):
         freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
 
         # 对下采样后的频域信号进行逆傅里叶变换
-        downsampled_signal = torch.fft.ifftn(freq_signal_downsampled, dim=(1, 2))
+        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=1)
 
         # 取实部作为下采样后的时域信号
         downsampled_signal = downsampled_signal.real
@@ -257,13 +258,13 @@ class MultiScaleSeasonMixing(nn.Module):
 
         return out_season_list
 
-
     # def forward(self,season_list):
     #     result_list = []
     #     for i,season_item in zip(range(len(season_list)),season_list):
     #         # season_item_f = self.fourier_layers[i](season_item.permute(0, 2, 1))
     #         result_list.append(season_item.permute(0, 2, 1))
     #     return result_list
+
 
 class MultiScaleTrendMixing(nn.Module):
     """
@@ -288,42 +289,45 @@ class MultiScaleTrendMixing(nn.Module):
         #         )
         #         for i in reversed(range(configs.down_sampling_layers))
         #     ])
-        if configs.trend_use_conv == 1:
-            self.up_sampling_layers = torch.nn.ModuleList(
-                [
-                    nn.Sequential(
-                        torch.nn.ConvTranspose1d(
-                            configs.d_model,
-                            configs.d_model,
-                            1
 
-                        ),
-                        nn.ReLU(),
-                        torch.nn.ConvTranspose1d(
-                            configs.d_model,
-                            configs.d_model,
-                            kernel_size=2,
-                            stride=2
-                        ),
-                    )
-                    for i in reversed(range(configs.down_sampling_layers))
-                ])
-        else:
-            self.up_sampling_layers = torch.nn.ModuleList(
-                [
-                    nn.Sequential(
-                        torch.nn.Linear(
-                            configs.seq_len // (configs.down_sampling_window ** (i + 1)),
-                            configs.seq_len // (configs.down_sampling_window ** i),
-                        ),
-                        nn.GELU(),
-                        torch.nn.Linear(
-                            configs.seq_len // (configs.down_sampling_window ** i),
-                            configs.seq_len // (configs.down_sampling_window ** i),
-                        ),
-                    )
-                    for i in reversed(range(configs.down_sampling_layers))
-                ])
+
+
+        # if configs.trend_use_conv == 1:
+        #     self.up_sampling_layers = torch.nn.ModuleList(
+        #         [
+        #             nn.Sequential(
+        #                 torch.nn.ConvTranspose1d(
+        #                     configs.d_model,
+        #                     configs.d_model,
+        #                     1
+        #
+        #                 ),
+        #                 nn.ReLU(),
+        #                 torch.nn.ConvTranspose1d(
+        #                     configs.d_model,
+        #                     configs.d_model,
+        #                     kernel_size=2,
+        #                     stride=2
+        #                 ),
+        #             )
+        #             for i in reversed(range(configs.down_sampling_layers))
+        #         ])
+        # else:
+        #     self.up_sampling_layers = torch.nn.ModuleList(
+        #         [
+        #             nn.Sequential(
+        #                 torch.nn.Linear(
+        #                     configs.seq_len // (configs.down_sampling_window ** (i + 1)),
+        #                     configs.seq_len // (configs.down_sampling_window ** i),
+        #                 ),
+        #                 nn.GELU(),
+        #                 torch.nn.Linear(
+        #                     configs.seq_len // (configs.down_sampling_window ** i),
+        #                     configs.seq_len // (configs.down_sampling_window ** i),
+        #                 ),
+        #             )
+        #             for i in reversed(range(configs.down_sampling_layers))
+        #         ])
 
     # def forward(self, trend_list):
     #
@@ -387,23 +391,23 @@ class PastDecomposableMixing(nn.Module):
         # Mxing trend
         self.mixing_multi_scale_trend = MultiScaleTrendMixing(configs)
 
-        self.out_cross_layer_test = torch.nn.ModuleList(
-            [
-                nn.Sequential(
-                    torch.nn.Linear(
-                        configs.d_model,
-                        configs.d_ff,
-                    ),
-                    nn.GELU(),
-                    torch.nn.Linear(
-                        configs.d_ff,
-                        configs.d_model ,
-                    ),
-
-                )
-                for i in range(configs.down_sampling_layers + 1)
-            ]
-        )
+        # self.out_cross_layer_test = torch.nn.ModuleList(
+        #     [
+        #         nn.Sequential(
+        #             torch.nn.Linear(
+        #                 configs.d_model,
+        #                 configs.d_ff,
+        #             ),
+        #             nn.GELU(),
+        #             torch.nn.Linear(
+        #                 configs.d_ff,
+        #                 configs.d_model,
+        #             ),
+        #
+        #         )
+        #         for i in range(configs.down_sampling_layers + 1)
+        #     ]
+        # )
 
     # 提交：itransformer的embedding  后面用的全都是TimeMixer的东西，必须加上x_mark_len
 
@@ -441,9 +445,9 @@ class PastDecomposableMixing(nn.Module):
             out = out_season + out_trend
             # out = out_season + out_trend
             # if self.channel_independence:
-                # out = ori + self.out_cross_layer_test[i](out.permute(0, 2, 1)).permute(0, 2, 1)
-                # out = ori + self.out_cross_layer_test[i](out)
-                # out = ori + self.out_cross_layer(out)
+            # out = ori + self.out_cross_layer_test[i](out.permute(0, 2, 1)).permute(0, 2, 1)
+            # out = ori + self.out_cross_layer_test[i](out)
+            # out = ori + self.out_cross_layer(out)
             # out_list.append(out[:, :length, :])
             out_list.append(out)
         return out_list
@@ -461,19 +465,20 @@ class Seasonal_Prediction(nn.Module):
         self.pred_len = configs.pred_len
         self.channel_independence = configs.channel_independence
         self.e_layers = configs.e_layers
-        self.decomp_layer = [series_decomp(k) for k in self.decomp_kernel]
+        # self.decomp_layer = [series_decomp(k) for k in self.decomp_kernel]
         self.pdm_blocks = nn.ModuleList([PastDecomposableMixing(configs)
                                          for _ in range(configs.e_layers)])
         self.dataEmbedding_wo_pos = DataEmbedding_wo_pos(1, configs.d_model, configs.embed, configs.freq,
                                                          configs.dropout)
 
-        self.fourier_layer = FourierLow(seq_len=configs.seq_len ,individual=False,enc_in=configs.enc_in,cut_freq=50)
+        self.fourier_layer = FourierLow(seq_len=configs.pred_len, individual=False, enc_in=configs.enc_in,
+                                        cut_freq=configs.cut_freq)
 
         # 消融 fourier
         self.use_fourier = configs.use_fourier
         self.use_space_merge = configs.use_space_merge
 
-        self.merge_inner = Conv2dMergeBlock(in_channels=configs.seq_len, out_channels=configs.seq_len,
+        self.merge_inner = Conv2dMergeBlock(in_channels=configs.pred_len, out_channels=configs.pred_len,
                                             num_branch=self.configs.down_sampling_layers + 1)
         # self.merge_outer = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=len(self.decomp_kernel))
 
@@ -490,13 +495,12 @@ class Seasonal_Prediction(nn.Module):
             self.predict_layers = torch.nn.ModuleList(
                 [
 
-
-                        torch.nn.ConvTranspose1d(
-                            configs.d_model,
-                            configs.d_model,
-                            kernel_size=2 ** i,
-                            stride=2 ** i
-                        )
+                    torch.nn.ConvTranspose1d(
+                        configs.d_model,
+                        configs.d_model,
+                        kernel_size=2 ** i,
+                        stride=2 ** i
+                    )
 
                     for i in range(configs.down_sampling_layers + 1)
                 ])
@@ -563,6 +567,7 @@ class Seasonal_Prediction(nn.Module):
         downsampled_signal = downsampled_signal.real
 
         return downsampled_signal
+
     def pre_enc(self, x_list):
         if self.channel_independence == 1:
             return (x_list, None)
@@ -603,7 +608,7 @@ class Seasonal_Prediction(nn.Module):
 
         for i in range(self.configs.down_sampling_layers):
             if self.use_fourier == 1:
-                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2**(i+1))
+                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2 ** (i + 1))
             else:
                 x_enc_sampling = down_pool(x_enc_ori)  # 32*12*128  --- 32*12 * 64
             x_enc_sampling_list.append(x_enc_sampling.permute(0, 2, 1))
@@ -632,7 +637,7 @@ class Seasonal_Prediction(nn.Module):
 
                 # dec_out = self.predict_layers[i](enc_out)# align temporal dimension
 
-                dec_out = dec_out.reshape(B,  self.configs.c_out,self.configs.pred_len).permute(0, 2, 1).contiguous()
+                dec_out = dec_out.reshape(B, self.configs.c_out, self.configs.pred_len).permute(0, 2, 1).contiguous()
                 dec_out_list.append(dec_out)
 
         else:
@@ -644,7 +649,7 @@ class Seasonal_Prediction(nn.Module):
 
         return dec_out_list
 
-    def forward(self, dec,x_mark):
+    def forward(self, dec, x_mark):
         # dec = dec.permute(0, 2, 1)  # 32* 128 * 12（7+5）  5.4改 32 96 128
 
         x_enc, x_mark_enc = self.__multi_scale_process_inputs(dec, x_mark)
@@ -691,15 +696,16 @@ class Seasonal_Prediction(nn.Module):
 
         # t = multi
         # merge
-        dec_out = self.fourier_layer(dec_out)
         # result = torch.stack(multi, dim=-1).sum(-1)
         # result = self.merge_outer(multi)
         result = self.normalize_layers[0](dec_out, 'denorm')
+        result = self.fourier_layer(result)
 
         return result
 
+
 class FourierLow(nn.Module):
-    def __init__(self, seq_len ,individual,enc_in,cut_freq):
+    def __init__(self, seq_len, individual, enc_in, cut_freq):
         super(FourierLow, self).__init__()
         self.seq_len = seq_len
         self.channels = enc_in
@@ -709,7 +715,8 @@ class FourierLow(nn.Module):
 
         # 注意：为了处理复数数据，我们的频率上采样层的输入和输出尺寸都翻倍
         if self.individual:
-            self.freq_upsampler = nn.ModuleList([nn.Linear(self.n_fft * 2, self.n_fft * 2, bias=False) for _ in range(self.channels)])
+            self.freq_upsampler = nn.ModuleList(
+                [nn.Linear(self.n_fft * 2, self.n_fft * 2, bias=False) for _ in range(self.channels)])
         else:
             self.freq_upsampler = nn.Linear(self.n_fft * 2 * self.channels, self.n_fft * 2 * self.channels, bias=False)
 
@@ -718,10 +725,9 @@ class FourierLow(nn.Module):
         x_normalized = (x - x_mean) / torch.sqrt(torch.var(x, dim=1, keepdim=True) + 1e-5)
         # x_normalized = x
 
-
         # 执行FFT变换
         low_specx = torch.fft.rfft(x_normalized, dim=1)
-        low_specx[:, :-self.dominance_freq, :] = 0  # 应用LPF
+        low_specx[:, self.dominance_freq:, :] = 0  # 应用LPF
 
         # 拆分实部和虚部
         real_part = low_specx.real
@@ -758,4 +764,3 @@ class FourierLow(nn.Module):
         xy = (low_xy * torch.sqrt(torch.var(x, dim=1, keepdim=True) + 1e-5)) + x_mean
         # xy = low_xy
         return xy
-

@@ -22,7 +22,11 @@ import os
 import time
 
 import warnings
-warnings.filterwarnings('ignore')
+
+import os
+
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+# warnings.filterwarnings('ignore')
 
 
 class Exp_Informer(Exp_Basic):
