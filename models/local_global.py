@@ -411,6 +411,26 @@ class PastDecomposableMixing(nn.Module):
 
         # Mxing trend
         self.mixing_multi_scale_trend = MultiScaleTrendMixing(configs)
+        self.out_cross_layer_test = torch.nn.ModuleList(
+            [
+                nn.Sequential(
+                    torch.nn.Conv1d(
+                        configs.d_model,
+                        configs.d_ff,
+                        kernel_size=1
+                    ),
+                    nn.ReLU(),
+                    torch.nn.Conv1d(
+                        configs.d_ff,
+                        configs.d_model,
+                        kernel_size=1
+
+                    ),
+
+                )
+                for i in range(configs.down_sampling_layers + 1)
+            ]
+        )
 
     def forward(self, x_list):
         length_list = []
@@ -442,10 +462,10 @@ class PastDecomposableMixing(nn.Module):
         out_list = []
         for i, ori, out_season, out_trend, length in zip(range(len(x_list)), x_list, out_season_list, out_trend_list,
                                                          length_list):
-            out = out_trend + ori
+            # out = out_trend
             # out = out_season + out_trend
             # if self.channel_independence:
-            # out = ori + self.out_cross_layer_test[i](out.permute(0, 2, 1)).permute(0, 2, 1)
+            out = out_trend + self.out_cross_layer_test[i](out_trend.permute(0, 2, 1)).permute(0, 2, 1)
             # out = ori + self.out_cross_layer_test[i](out)
             # out = ori + self.out_cross_layer(out)
             # out_list.append(out[:, :length, :])
@@ -480,17 +500,7 @@ class Seasonal_Prediction(nn.Module):
 
         self.merge_inner = Conv2dMergeBlock(in_channels=configs.pred_len, out_channels=configs.pred_len,
                                             num_branch=self.configs.down_sampling_layers + 1)
-        # self.merge_outer = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=len(self.decomp_kernel))
 
-        # self.predict_layers = torch.nn.ModuleList(
-        #     [
-        #         torch.nn.Linear(
-        #             configs.d_model // (configs.down_sampling_window ** i),
-        #             configs.d_model,
-        #         )
-        #         for i in range(configs.down_sampling_layers + 1)
-        #     ]
-        # )
         if configs.pred_use_conv == 1:
             self.predict_layers = torch.nn.ModuleList(
                 [
@@ -517,16 +527,6 @@ class Seasonal_Prediction(nn.Module):
 
         self.projection_layer = nn.Linear(configs.d_model, 1, bias=True)
 
-        # self.predict_layers = torch.nn.ModuleList(
-        #     [
-        #         torch.nn.Conv1d(
-        #             configs.d_model // (configs.down_sampling_window ** i),
-        #             configs.d_model,
-        #             kernel_size=1
-        #         )
-        #         for i in range(configs.down_sampling_layers + 1)
-        #     ]
-        # )
 
         self.normalize_layers = torch.nn.ModuleList(
             [
@@ -536,37 +536,8 @@ class Seasonal_Prediction(nn.Module):
             ]
         )
 
-        # self.up_to_d_model = nn.Linear(1, configs.d_model)
 
     # 傅里叶下采样
-
-    def fourier_downsampling(self, signal, downsample_factor):
-        """
-        使用傅里叶变换进行下采样
-        Args:
-        - signal: 输入的时域信号，形状为 [batch_size, seq_len, channels]
-        - downsample_factor: 下采样因子，用于指定下采样的倍率
-        Returns:
-        - downsampled_signal: 下采样后的时域信号，形状为 [batch_size, downsampled_seq_len, channels]
-        """
-        batch_size, seq_len, channels = signal.shape
-
-        # 对信号进行傅里叶变换
-        freq_signal = torch.fft.fft(signal, dim=2, norm='ortho')
-
-        # 计算下采样后的频域信号长度
-        downsampled_seq_len = channels // downsample_factor
-
-        # 仅保留频谱的前 downsampled_seq_len 个频率分量
-        freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
-
-        # 对下采样后的频域信号进行逆傅里叶变换
-        downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=2)
-        # downsampled_signal = freq_signal_downsampled
-        # 取实部作为下采样后的时域信号
-        downsampled_signal = downsampled_signal.real
-
-        return downsampled_signal
 
     def pre_enc(self, x_list):
         if self.channel_independence == 1:
