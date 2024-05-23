@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -p gpu1
 #SBATCH --gpus=1
-#SBATCH -w aiwkr3
+#SBATCH -w aiwkr1
 
 
 #module load cuda/11.7.0
@@ -84,7 +84,7 @@ fi
 
 use_fourier=1
 use_space_merge=1
-pred_use_conv=1
+pred_use_conv=0
 season_use_fourier=1
 trend_use_conv=0
 
@@ -177,7 +177,7 @@ ETTh2_cut_freq=30
         --channel_independence 1 \
         --use_space_merge $use_space_merge \
         --use_fourier $use_fourier \
-        --pred_use_conv $pred_use_conv \
+        --pred_use_conv $pred_use_conv  \
         --season_use_fourier $season_use_fourier \
         --trend_use_conv $trend_use_conv \
         --cut_freq $ETTm1_cut_freq \
