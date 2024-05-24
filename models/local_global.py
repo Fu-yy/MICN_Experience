@@ -357,6 +357,37 @@ class MultiScaleTrendMixing(nn.Module):
         #             for i in reversed(range(configs.down_sampling_layers))
         #         ])
 
+    # def forward(self, trend_list):
+    #
+    #     # mixing low->high
+    #     trend_list_reverse = trend_list.copy()
+    #     trend_list_reverse.reverse()
+    #     out_low = trend_list_reverse[0]
+    #     out_high = trend_list_reverse[1]
+    #     out_trend_list = [out_low.permute(0, 2, 1)]
+    #
+    #     for i in range(len(trend_list_reverse) - 1):
+    #         if self.configs.trend_use_conv == 1:
+    #             out_high_res = self.up_sampling_layers[i](out_low.permute(0, 2, 1)).permute(0, 2, 1)
+    #             # out_high_res = self.up_sampling_layers[i](out_low)
+    #
+    #         else:
+    #             # out_high_res = self.up_sampling_layers[i](out_low)
+    #             out_high_res = self.up_sampling_layers(out_low)
+    #
+    #
+    #         out_high = out_high + out_high_res
+    #         out_low = out_high
+    #         if i + 2 <= len(trend_list_reverse) - 1:
+    #             out_high = trend_list_reverse[i + 2]
+    #         out_trend_list.append(out_low.permute(0, 2, 1))
+    #
+    #
+    #
+    #
+    #
+    #     out_trend_list.reverse()
+    #     return out_trend_list
     def forward(self, trend_list):
 
         # mixing low->high
@@ -375,7 +406,6 @@ class MultiScaleTrendMixing(nn.Module):
                 # out_high_res = self.up_sampling_layers[i](out_low)
                 out_high_res = self.up_sampling_layers(out_low)
 
-
             out_high = out_high + out_high_res
             out_low = out_high
             if i + 2 <= len(trend_list_reverse) - 1:
@@ -384,7 +414,6 @@ class MultiScaleTrendMixing(nn.Module):
 
         out_trend_list.reverse()
         return out_trend_list
-
     # def forward(self, season_list):
     #     result_list = []
     #     for i in season_list:
@@ -454,8 +483,9 @@ class PastDecomposableMixing(nn.Module):
             trend_list.append(trend.permute(0, 2, 1))
         # 新增将1变成d_model
 
-        # bottom-up season mixing
-        out_season_list = self.mixing_multi_scale_season(season_list)
+        # bottom-up season mixin
+        out_season_list =season_list
+        # out_season_list = self.mixing_multi_scale_season(season_list)
         # top-down trend mixing
         out_trend_list = self.mixing_multi_scale_trend(trend_list)
 
@@ -491,7 +521,7 @@ class Seasonal_Prediction(nn.Module):
         self.dataEmbedding_wo_pos = DataEmbedding_wo_pos(1, configs.d_model, configs.embed, configs.freq,
                                                          configs.dropout)
 
-        self.fourier_layer = FourierLow(seq_len=configs.pred_len, individual=False, enc_in=configs.enc_in,
+        self.fourier_layer = FourierLow(seq_len=configs.seq_len, individual=False, enc_in=configs.enc_in,
                                         cut_freq=configs.cut_freq)
 
         # 消融 fourier
@@ -685,6 +715,7 @@ class Seasonal_Prediction(nn.Module):
         return result
 
 
+
 class FourierLow(nn.Module):
     def __init__(self, seq_len, individual, enc_in, cut_freq):
         super(FourierLow, self).__init__()
@@ -697,21 +728,12 @@ class FourierLow(nn.Module):
         # 注意：为了处理复数数据，我们的频率上采样层的输入和输出尺寸都翻倍
 
         # self.freq_upsampler = nn.Conv1d(self.n_fft , self.n_fft ,kernel_size=1)
-
-        self.freq_upsampler = nn.Linear(14, 14, bias=False)
-
-        # self.freq_upsampler = nn.Sequential(
-        #     nn.Conv1d(self.n_fft , self.n_fft ,kernel_size=1),
-        #     nn.ReLU(),
-        #     nn.Conv1d(self.n_fft , self.n_fft ,kernel_size=1),
         #
-        # )
-        # self.freq_upsampler = nn.Sequential(
-        #     nn.Linear(self.n_fft, self.n_fft),
-        #     nn.GELU(),
-        #     nn.Linear(self.n_fft, self.n_fft),
-        #
-        # )
+        # self.freq_upsampler = FourierLowEinsum(self.channels)
+        self.freq_upsampler = nn.Linear(self.channels * 2, self.channels * 2, bias=False)
+
+        self.layer_norm = nn.LayerNorm(self.seq_len)
+        self.activate = nn.GELU()
 
     def forward(self, x,dominance_freq):
         x = x.permute(0,2,1)
@@ -735,6 +757,8 @@ class FourierLow(nn.Module):
 
         # low_specx_combined = low_specx_combined.view(-1, self.n_fft * 2 * self.channels)
         low_specxy_combined = self.freq_upsampler(low_specx_combined)
+
+
         # 确保low_specxy_combined回到期望的形状
         # low_specxy_combined = low_specxy_combined.view(-1, self.n_fft, 2 * self.channels)
 
@@ -753,4 +777,5 @@ class FourierLow(nn.Module):
         xy = (low_xy * torch.sqrt(torch.var(x, dim=1, keepdim=True) + 1e-5)) + x_mean
         # xy = low_xy
         xy = xy.permute(0,2,1)
+        # return self.layer_norm(self.activate(xy))
         return xy
