@@ -590,8 +590,8 @@ class Seasonal_Prediction(nn.Module):
 
         enc_out_list = x_list  # 384*128*1   384*64*1   384*32*1   384*16*1
 
-        for j in range(self.e_layers):
-            enc_out_list = self.pdm_blocks[j](enc_out_list)
+        # for j in range(self.e_layers):
+        #     enc_out_list = self.pdm_blocks[j](enc_out_list)
         dec_out_list = self.future_multi_mixing(B, enc_out_list, x_list)
 
         if self.use_space_merge == 1:
