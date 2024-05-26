@@ -107,6 +107,10 @@ if __name__ == '__main__':
     # 消融
     parser.add_argument('--use_fourier', type=int, default=1,help='use_fourier')
     parser.add_argument('--use_space_merge', type=int, default=1,help='use_space_merge')
+    parser.add_argument('--pred_use_conv', type=int, default=1,help='pred_use_conv')
+    parser.add_argument('--season_use_fourier', type=int, default=1,help='season_use_forier')
+    parser.add_argument('--trend_use_conv', type=int, default=1,help='trend_use_conv')
+    parser.add_argument('--cut_freq', type=int, default=10,help='cut_freq')
 
 
     args = parser.parse_args()
