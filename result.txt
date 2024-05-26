@@ -409,3 +409,15 @@ mse:0.2906568646430969, mae:0.34878212213516235
 micn_Exchange_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
 mse:0.08504714071750641, mae:0.20567931234836578
 
+micn_ETTm2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.17749357223510742, mae:0.2620807886123657
+
+micn_ETTm1_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.3481907844543457, mae:0.37904807925224304
+
+micn_ETTh2_regre_ftM_sl96_ll48_pl96_dm128_nh8_el2_dl1_df128_ebtimeF_0  
+mse:0.2900662124156952, mae:0.3475947678089142
+
+micn_ETTh1_regre_ftM_sl96_ll48_pl96_dm256_nh8_el2_dl1_df256_ebtimeF_0  
+mse:0.3738233745098114, mae:0.389970064163208
+

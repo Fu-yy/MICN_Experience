@@ -520,11 +520,11 @@ class Seasonal_Prediction(nn.Module):
 
         for i in range(self.configs.down_sampling_layers):
             if self.use_fourier == 1:
-                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2)
+                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2 ** (i+1))
             else:
                 x_enc_sampling = down_pool(x_enc_ori) # 32*12*128  --- 32*12 * 64
             x_enc_sampling_list.append(x_enc_sampling.permute(0, 2, 1))
-            x_enc_ori = x_enc_sampling
+            # x_enc_ori = x_enc_sampling
 
             if x_mark_enc is not None:
                 x_mark_sampling_list.append(x_mark_enc_mark_ori[:, ::self.configs.down_sampling_window, :])
@@ -545,7 +545,7 @@ class Seasonal_Prediction(nn.Module):
                 dec_out = self.predict_layers[i](enc_out.permute(0, 2, 1)).permute(
                     0, 2, 1)  # align temporal dimension
 
-                dec_out = self.projection_layer(dec_out)
+                # dec_out = self.projection_layer(dec_out)
 
                 # dec_out = self.predict_layers[i](enc_out)# align temporal dimension
 
@@ -585,7 +585,8 @@ class Seasonal_Prediction(nn.Module):
                 if self.channel_independence == 1:
                     x = x.permute(0, 2, 1).contiguous().reshape(B * N, T,1)
 
-                x_list.append(self.up_to_d_model(x))
+                # x_list.append(self.up_to_d_model(x))
+                x_list.append(x)
 
 
         enc_out_list = x_list  # 384*128*1   384*64*1   384*32*1   384*16*1

@@ -198,7 +198,7 @@ for pred_len in 96  192 336 720; do
       --root_path ETT-small \
       --mode regre \
       --data ETTh1 \
-      --freq t \
+      --freq h \
       --features M \
       --e_layers 2 \
       --d_layers 1 \
@@ -234,7 +234,7 @@ for pred_len in 96  192 336 720; do
         --root_path ETT-small \
         --mode regre \
         --data ETTh2 \
-        --freq t \
+        --freq h \
         --features M \
         --e_layers 2 \
         --d_layers 1 \
