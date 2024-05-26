@@ -444,7 +444,10 @@ class Seasonal_Prediction(nn.Module):
         #         for i in range(configs.down_sampling_layers + 1)
         #     ]
         # )
-
+        self.freq_upsampler = nn.ModuleList([
+            nn.Linear(configs.d_model // (2 ** i),configs.d_model // (2 ** i))
+            for i in range(1,configs.down_sampling_layers +1)
+        ])
 
         self.normalize_layers = torch.nn.ModuleList(
             [
@@ -458,7 +461,7 @@ class Seasonal_Prediction(nn.Module):
 
     # 傅里叶下采样
 
-    def fourier_downsampling(self,signal, downsample_factor):
+    def fourier_downsampling(self,signal, downsample_factor,i):
         """
         使用傅里叶变换进行下采样
         Args:
@@ -467,16 +470,40 @@ class Seasonal_Prediction(nn.Module):
         Returns:
         - downsampled_signal: 下采样后的时域信号，形状为 [batch_size, downsampled_seq_len, channels]
         """
-        batch_size, seq_len, channels = signal.shape
+        batch_size, channels,seq_len  = signal.shape
 
         # 对信号进行傅里叶变换
         freq_signal = torch.fft.fft(signal, dim=1, norm='ortho')
 
         # 计算下采样后的频域信号长度
-        downsampled_seq_len = channels // downsample_factor
+        downsampled_seq_len = seq_len // downsample_factor
 
         # 仅保留频谱的前 downsampled_seq_len 个频率分量
         freq_signal_downsampled = freq_signal[:, :, :downsampled_seq_len]
+
+
+################################################################################
+        real_part = freq_signal_downsampled.real
+        imag_part = freq_signal_downsampled.imag
+
+        low_specx_combined = torch.cat([real_part, imag_part], dim=1)
+
+        low_specxy_combined = self.freq_upsampler[i](low_specx_combined)
+        # low_specxy_combined = self.freq_upsampler[i](low_specx_combined)
+
+
+        # 分割实部和虚部，需要考虑channels维度
+        real_part, imag_part = torch.split(low_specxy_combined, channels, dim=1)
+
+
+        # 重新组合为复数张量
+        freq_signal_downsampled = torch.complex(real_part, imag_part)
+
+
+
+        ######################################################
+
+
 
         # 对下采样后的频域信号进行逆傅里叶变换
         downsampled_signal = torch.fft.ifft(freq_signal_downsampled, dim=1)
@@ -520,11 +547,11 @@ class Seasonal_Prediction(nn.Module):
 
         for i in range(self.configs.down_sampling_layers):
             if self.use_fourier == 1:
-                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2)
+                x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2 ** (i+1),i)
             else:
                 x_enc_sampling = down_pool(x_enc_ori) # 32*12*128  --- 32*12 * 64
             x_enc_sampling_list.append(x_enc_sampling.permute(0, 2, 1))
-            x_enc_ori = x_enc_sampling
+            # x_enc_ori = x_enc_sampling
 
             if x_mark_enc is not None:
                 x_mark_sampling_list.append(x_mark_enc_mark_ori[:, ::self.configs.down_sampling_window, :])
@@ -545,7 +572,7 @@ class Seasonal_Prediction(nn.Module):
                 dec_out = self.predict_layers[i](enc_out.permute(0, 2, 1)).permute(
                     0, 2, 1)  # align temporal dimension
 
-                dec_out = self.projection_layer(dec_out)
+                # dec_out = self.projection_layer(dec_out)
 
                 # dec_out = self.predict_layers[i](enc_out)# align temporal dimension
 
@@ -585,7 +612,8 @@ class Seasonal_Prediction(nn.Module):
                 if self.channel_independence == 1:
                     x = x.permute(0, 2, 1).contiguous().reshape(B * N, T,1)
 
-                x_list.append(self.up_to_d_model(x))
+                x_list.append(x)
+                # x_list.append(self.up_to_d_model(x))
 
 
         enc_out_list = x_list  # 384*128*1   384*64*1   384*32*1   384*16*1
