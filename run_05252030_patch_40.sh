@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -p gpu1
 #SBATCH --gpus=1
-#SBATCH -w aiwkr3
+#SBATCH -w aiwkr1
 
 
 #module load cuda/11.7.0
@@ -40,6 +40,7 @@ source activate py310t2cu118
 # 新   use_fourier=1   use_space_merge=1   pred_use_conv=1  season_use_fourier=0  trend_use_conv=1           2024.5.13 16:40
 # 新   use_fourier=1   use_space_merge=1   pred_use_conv=1  season_use_fourier=1  trend_use_conv=0           2024.5.13 16:41
 # 新      v202405252030       Traffic和ECL都用128，batchsize=32          2024.5.25 20:30
+# 新      v202405252030       Traffic和ECL分别测试不同的batch和dmodel          2024.5.26 20：55
 
 
 
@@ -118,7 +119,7 @@ ETTh2_cut_freq=30
 
 
 #  m2 2分解核
-
+if false;then
 # m2 d_model= d_ff = 128
   for pred_len in 96 192 336 720; do
    python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
@@ -188,7 +189,7 @@ ETTh2_cut_freq=30
   done
 
 
-
+fi
 
 #  h1 2分解核  dmodel=dff=256
 
@@ -265,6 +266,7 @@ for pred_len in 96  192 336 720; do
 
 
 # electricity d_model=d_ff=512
+# ECL 32batch
 
  for pred_len in 96 192 336 720 ; do
    python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
@@ -291,8 +293,164 @@ for pred_len in 96  192 336 720; do
         --pred_use_conv $pred_use_conv \
         --season_use_fourier $season_use_fourier \
         --trend_use_conv $trend_use_conv \
-    > log_05252030_40/electricity/'0'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_05252030_40/electricity/'d_model=128_32batch'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
+
+
+ for pred_len in 96 192 336 720 ; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path electricity \
+        --mode regre \
+        --freq h \
+        --data ECL \
+        --features M \
+        --e_layers 3 \
+        --d_layers 1 \
+        --d_model 256 \
+        --d_ff 256 \
+        --seq_len 96 \
+        --pred_len $pred_len \
+        --itr 1 \
+        --learning_rate 0.0005 \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $electricity_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/electricity/'d_model=256_32batch'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+ for pred_len in 96 192 336 720 ; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path electricity \
+        --mode regre \
+        --freq h \
+        --data ECL \
+        --features M \
+        --e_layers 3 \
+        --d_layers 1 \
+        --d_model 512 \
+        --d_ff 512 \
+        --seq_len 96 \
+        --pred_len $pred_len \
+        --itr 1 \
+        --learning_rate 0.0005 \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $electricity_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/electricity/'d_model=512_32batch'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+
+
+# ECL 16batch
+
+for pred_len in 96 192 336 720 ; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path electricity \
+        --mode regre \
+        --freq h \
+        --data ECL \
+        --features M \
+        --e_layers 3 \
+        --d_layers 1 \
+        --d_model 128 \
+        --d_ff 128 \
+        --seq_len 96 \
+        --pred_len $pred_len \
+        --batch_size 16 \
+        --itr 1 \
+        --learning_rate 0.0005 \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $electricity_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/electricity/'d_model=128_16batch'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+
+ for pred_len in 96 192 336 720 ; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path electricity \
+        --mode regre \
+        --freq h \
+        --data ECL \
+        --features M \
+        --e_layers 3 \
+        --d_layers 1 \
+        --d_model 256 \
+        --d_ff 256 \
+        --seq_len 96 \
+        --pred_len $pred_len \
+        --batch_size 16 \
+        --itr 1 \
+        --learning_rate 0.0005 \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $electricity_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/electricity/'d_model=256_16batch'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+ for pred_len in 96 192 336 720 ; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path electricity \
+        --mode regre \
+        --freq h \
+        --data ECL \
+        --features M \
+        --e_layers 3 \
+        --d_layers 1 \
+        --d_model 512 \
+        --d_ff 512 \
+        --seq_len 96 \
+        --pred_len $pred_len \
+        --itr 1 \
+        --batch_size 16 \
+        --learning_rate 0.0005 \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $electricity_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/electricity/'d_model=512_16batch'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+
+
+
+
+
+
 
 
 
@@ -316,7 +474,128 @@ for pred_len in 96 192 336 720; do
         --seq_len 96 \
         --itr 1 \
         --factor 3 \
+        --d_model 512 \
+        --d_ff 512 \
+        --learning_rate 0.001 \
+        --pred_len $pred_len \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $traffic_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/Traffic/'d_model=512_32batch'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+for pred_len in 96 192 336 720; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path traffic \
+        --mode regre \
+        --data Traffic \
+        --features M \
+        --e_layers 4 \
+        --d_layers 1 \
+        --freq h \
+        --seq_len 96 \
+        --itr 1 \
+        --factor 3 \
+        --d_model 256 \
+        --d_ff 256 \
+        --learning_rate 0.001 \
+        --pred_len $pred_len \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $traffic_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/Traffic/'d_model=256_32batch'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+
+
+# Traffic 16batch
+for pred_len in 96 192 336 720; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path traffic \
+        --mode regre \
+        --data Traffic \
+        --features M \
+        --e_layers 4 \
+        --d_layers 1 \
+        --freq h \
+        --seq_len 96 \
+        --itr 1 \
+        --factor 3 \
+        --d_model 512 \
+        --d_ff 512 \
+        --learning_rate 0.001 \
+        --pred_len $pred_len \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --batch_size 16 \
+        --x_mark_len $traffic_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/Traffic/'d_model=512_16batch'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+
+for pred_len in 96 192 336 720; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path traffic \
+        --mode regre \
+        --data Traffic \
+        --features M \
+        --e_layers 4 \
+        --d_layers 1 \
+        --freq h \
+        --seq_len 96 \
+        --itr 1 \
+        --factor 3 \
+        --d_model 256 \
+        --batch_size 16 \
+        --d_ff 256 \
+        --learning_rate 0.001 \
+        --pred_len $pred_len \
+        --down_sampling_layers 3 \
+        --down_sampling_method avg \
+        --down_sampling_window 2 \
+        --x_mark_len $traffic_x_mark_len \
+        --use_space_merge $use_space_merge \
+        --use_fourier $use_fourier \
+        --pred_use_conv $pred_use_conv \
+        --season_use_fourier $season_use_fourier \
+        --trend_use_conv $trend_use_conv \
+    > log_05252030_40/Traffic/'d_model=256_16batch'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  done
+for pred_len in 96 192 336 720; do
+   python -u  /mnt/nfs/data/home/1120231440/home/fuy/python/MICN_Experience/run.py \
+        --model micn \
+        --root_path traffic \
+        --mode regre \
+        --data Traffic \
+        --features M \
+        --e_layers 4 \
+        --d_layers 1 \
+        --freq h \
+        --seq_len 96 \
+        --itr 1 \
+        --factor 3 \
         --d_model 128 \
+        --batch_size 16 \
         --d_ff 128 \
         --learning_rate 0.001 \
         --pred_len $pred_len \
@@ -329,7 +608,7 @@ for pred_len in 96 192 336 720; do
         --pred_use_conv $pred_use_conv \
         --season_use_fourier $season_use_fourier \
         --trend_use_conv $trend_use_conv \
-    > log_05252030_40/Traffic/'0'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_05252030_40/Traffic/'d_model=128_16batch'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -373,7 +652,7 @@ for pred_len in 96 192 336 720; do
 
 
 
-
+if false;then
 #  weather 3分解核
 
 
@@ -407,6 +686,6 @@ for pred_len in 96 192 336 720; do
   done
 
 
-
+fi
 
 
