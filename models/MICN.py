@@ -20,20 +20,10 @@ class MICN(nn.Module):
         self.decomp_kernel = configs.decomp_kernel
         self.mode = mode
         self.use_norm = configs.use_norm
-
         self.decomp_multi = series_decomp_multi(self.decomp_kernel)
-        print("MICN中的DECOMP:")
-        print(configs.decomp_kernel)
         # embedding
-
-        if self.configs.use_invertembed == 1:
-            self.inverted_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
+        self.inverted_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
-            # self.inverted_embedding = DataEmbedding_wo_pos(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-            #                                           configs.dropout)
-        else:
-            self.dec_embedding = DataEmbedding(dec_in, d_model, embed, freq, dropout)
-
         self.conv_trans = Seasonal_Prediction(configs=configs,embedding_size=d_model, n_heads=n_heads, dropout=dropout,
                                      d_layers=d_layers, decomp_kernel=self.decomp_kernel, c_out=c_out, conv_kernel=conv_kernel,
                                      isometric_kernel=isometric_kernel, device=device)
@@ -48,6 +38,10 @@ class MICN(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         # 2024.4.1新增 begin
+        if self.configs.use_x_mark_enc == 1:
+            x_mark_enc = x_mark_enc
+        else:
+            x_mark_enc = None
 
         if self.use_norm:
             # Normalization from Non-stationary Transformer
@@ -58,39 +52,18 @@ class MICN(nn.Module):
 
         _, _, N = x_enc.shape # B L N
 
-        # 2024.4.1新增 end
-
-        # trend-cyclical prediction block: regre or mean
-        if self.mode == 'regre':
+        if self.configs.front_use_decomp == 1:
             seasonal_init_enc, trend = self.decomp_multi(x_enc)
-            # x_mark_enc_seasonal_init_enc, _ = self.decomp_multi(x_mark_enc)
             trend = self.regression(trend.permute(0,2,1)).permute(0, 2, 1)
-        elif self.mode == 'mean':
-            decomp_mean = torch.mean(x_enc, dim=1).unsqueeze(1).repeat(1, self.pred_len, 1)
-            # x_mark_enc_seasonal_init_enc, _ = self.decomp_multi(x_mark_enc)
-
-            seasonal_init_enc, trend = self.decomp_multi(x_enc)
-            trend = torch.cat([trend[:, -self.seq_len:, :], decomp_mean], dim=1)
-
-        # embedding  2024.4.1 删除拼接
-        # zeros = torch.zeros([x_dec.shape[0], self.pred_len, x_dec.shape[2]], device=x_enc.device)
-        # seasonal_init_dec = torch.cat([seasonal_init_enc[:, -self.seq_len:, :], zeros], dim=1)
+        else:
+            seasonal_init_enc = x_enc
+            trend = None
 
         seasonal_init_dec = seasonal_init_enc
 
-        _,_, ss =seasonal_init_dec.shape
-        _,_, xh =x_mark_enc.shape
-
-        if self.configs.use_invertembed == 1:
-            # dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_dec)
-            dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
-            # dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
-        else:
-            dec_out = self.dec_embedding(seasonal_init_dec, x_mark_dec)
+        dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
 
         dec_out = self.conv_trans(dec_out)
-
-
 
         dec_out = self.projector(dec_out.permute(0, 2, 1)).permute(0, 2, 1)[:, :, :N] # filter the covariates
 
@@ -103,7 +76,6 @@ class MICN(nn.Module):
 
         # 2024.4.1新增 end
         dec_out = dec_out + trend
-        # dec_out = dec_out[:, -self.pred_len:, :] + trend[:, -self.pred_len:, :]
         return dec_out
 
 

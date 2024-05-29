@@ -1,6 +1,7 @@
 from torch.optim import lr_scheduler
 
-from data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred, Dataset_PEMS
+from data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred, Dataset_PEMS, \
+    Dataset_Solar
 from exp.exp_basic import Exp_Basic
 from models.TimeMixer import TimeMixer
 
@@ -77,7 +78,7 @@ class Exp_Informer(Exp_Basic):
             'Exchange': Dataset_Custom,
             'ILI': Dataset_Custom,
             'custom': Dataset_Custom,
-            'Solar': Dataset_Custom,
+            'Solar': Dataset_Solar,
             'PEMS03': Dataset_PEMS,
             'PEMS04': Dataset_PEMS,
             'PEMS07': Dataset_PEMS,

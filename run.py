@@ -105,13 +105,11 @@ if __name__ == '__main__':
 
 
     # 消融
-
+    parser.add_argument('--front_use_decomp', type=int, default=1,help='front_use_decomp')
     parser.add_argument('--use_fourier', type=int, default=1,help='use_fourier')
     parser.add_argument('--use_space_merge', type=int, default=1,help='use_space_merge')
-    parser.add_argument('--pred_use_conv', type=int, default=1,help='pred_use_conv')
-    parser.add_argument('--season_use_fourier', type=int, default=1,help='season_use_forier')
-    parser.add_argument('--trend_use_conv', type=int, default=1,help='trend_use_conv')
-    parser.add_argument('--cut_freq', type=int, default=10,help='cut_freq')
+    parser.add_argument('--use_x_mark_enc', type=int, default=1,help='use_x_mark_enc')
+
 
     args = parser.parse_args()
 
@@ -131,6 +129,7 @@ if __name__ == '__main__':
         'ECL':{'data':'electricity.csv','T':'OT','M':[321,321,321],'S':[1,1,1],'MS':[321,321,1]},
         'Traffic': {'data': 'traffic.csv', 'T': 'OT', 'M': [862, 862, 862], 'S': [1, 1, 1], 'MS': [862, 862, 1]},
         'Exchange': {'data': 'exchange_rate.csv', 'T': 'OT', 'M': [8, 8, 8], 'S': [1, 1, 1], 'MS': [8, 8, 1]},
+        'Solar': {'data': 'solar_AL.txt', 'T': 'OT', 'M': [137, 137, 137], 'S': [1, 1, 1], 'MS': [137, 137, 1]},
         'ILI': {'data': 'national_illness.csv', 'T': 'OT', 'M': [7, 7, 7], 'S': [1, 1, 1], 'MS': [7, 7, 1]},
         'PEMS03': {'data': 'PEMS03.npz', 'T': 'OT', 'M': [358, 358, 358], 'S': [1, 1, 1], 'MS': [358, 358, 1]},
         'PEMS04': {'data': 'PEMS04.npz', 'T': 'OT', 'M': [307, 307, 307], 'S': [1, 1, 1], 'MS': [307, 307, 1]},
@@ -170,6 +169,8 @@ if __name__ == '__main__':
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
+        if hasattr(torch.cuda, 'empty_cache'):
+            torch.cuda.empty_cache()
         exp.train(setting)
 
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
