@@ -572,6 +572,11 @@ class Seasonal_Prediction(nn.Module):
         if x_mark_enc is not None:
             for i, x, x_mark in zip(range(len(x_enc)), x_enc, x_mark_enc):
                 B, T, N = x.size()
+
+                print(B)
+                print(T)
+                print(N)
+                print(self.normalize_layers[i])
                 x = self.normalize_layers[i](x, 'norm')
                 if self.channel_independence == 1:
                     x = x.permute(0, 2, 1).contiguous().reshape(B * N, T, 1)
