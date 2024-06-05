@@ -249,6 +249,7 @@ class Seasonal_Prediction(nn.Module):
         # result = torch.stack(multi, dim=-1).sum(-1)
         # result = self.merge_outer(multi)
         result = self.normalize_layers[0](dec_out, 'denorm')
+        result = result.permute(0,2,1).contiguous()
 
         return result
 

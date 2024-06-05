@@ -63,9 +63,10 @@ class MICN(nn.Module):
 
         dec_out = self.inverted_embedding(seasonal_init_dec,x_mark_enc)
 
-        dec_out = self.conv_trans(dec_out)
+        for i in range(self.configs.e_layers):
+            dec_out = self.conv_trans(dec_out)
 
-        dec_out = self.projector(dec_out.permute(0, 2, 1)).permute(0, 2, 1)[:, :, :N] # filter the covariates
+        dec_out = self.projector(dec_out).permute(0, 2, 1).contiguous()[:, :, :N] # filter the covariates
 
         # 2024.4.1新增 begin
 
