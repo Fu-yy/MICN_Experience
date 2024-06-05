@@ -57,7 +57,7 @@ class MICN(nn.Module):
             trend = self.regression(trend.permute(0,2,1)).permute(0, 2, 1)
         else:
             seasonal_init_enc = x_enc
-            trend = None
+            trend = torch.tensor(0)
 
         seasonal_init_dec = seasonal_init_enc
 

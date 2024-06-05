@@ -158,19 +158,19 @@ class Seasonal_Prediction(nn.Module):
         return downsampled_signal
 
     def __multi_scale_process_inputs(self, x_enc, x_mark_enc):
-        if self.configs.down_sampling_method == 'max':
-            down_pool = torch.nn.MaxPool1d(self.configs.down_sampling_window, return_indices=False)
-        elif self.configs.down_sampling_method == 'avg':
-            down_pool = torch.nn.AvgPool1d(self.configs.down_sampling_window)
-        elif self.configs.down_sampling_method == 'conv':
-            padding = 1 if torch.__version__ >= '1.5.0' else 2
-            down_pool = nn.Conv1d(in_channels=self.configs.enc_in, out_channels=self.configs.enc_in,
-                                  kernel_size=3, padding=padding,
-                                  stride=self.configs.down_sampling_window,
-                                  padding_mode='circular',
-                                  bias=False)
-        else:
-            return x_enc, x_mark_enc
+        # if self.configs.down_sampling_method == 'max':
+        #     down_pool = torch.nn.MaxPool1d(self.configs.down_sampling_window, return_indices=False)
+        # elif self.configs.down_sampling_method == 'avg':
+        #     down_pool = torch.nn.AvgPool1d(self.configs.down_sampling_window)
+        # elif self.configs.down_sampling_method == 'conv':
+        #     padding = 1 if torch.__version__ >= '1.5.0' else 2
+        #     down_pool = nn.Conv1d(in_channels=self.configs.enc_in, out_channels=self.configs.enc_in,
+        #                           kernel_size=3, padding=padding,
+        #                           stride=self.configs.down_sampling_window,
+        #                           padding_mode='circular',
+        #                           bias=False)
+        # else:
+        #     return x_enc, x_mark_enc
 
         # B,T,C -> B,C,T
         x_enc = x_enc.permute(0, 2, 1)
@@ -187,6 +187,7 @@ class Seasonal_Prediction(nn.Module):
             if self.use_fourier == 1:
                 x_enc_sampling = self.fourier_downsampling(x_enc_ori, 2 ** (i+1))
             else:
+                down_pool = torch.nn.AvgPool1d(2 ** (i+1))
                 x_enc_sampling = down_pool(x_enc_ori) # 32*12*128  --- 32*12 * 64
             x_enc_sampling_list.append(x_enc_sampling.permute(0, 2, 1))
             if x_mark_enc is not None:

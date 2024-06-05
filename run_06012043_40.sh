@@ -42,65 +42,71 @@ source activate py310t2cu118
 # 新      v202405252030       Traffic和ECL都用128，batchsize=32          2024.5.25 20:30
 # 新      v202405261243       0 1 1 1  加上消融                          2024.5.29 19:23
 # 新      v202405261243       1 0 1 1  加上消融                          2024.5.29 20:00
+# 新      v202405261243       1 1 0 1  加上消融                          2024.5.29 20:10
+# 新      v202405261243       1 1 1 0  加上消融                          2024.5.29 20:20
+# 新      v202405291900       0 0 0 1                                    2024.6.1 8:56
+# 新      v202405291900       0 1 0 1                                    2024.6.1 9:09
+# 新      v202405291900       0 1 1 0                                    2024.6.1 9:09
+# 新      v202405291900       0 1 0 0                                    2024.6.1 20：43
 
 
-use_x_mark_enc=1
-front_use_decomp=0
-use_fourier=1
-use_space_merge=1
+use_x_mark_enc=0
+front_use_decomp=1
+use_fourier=0
+use_space_merge=0
 
 
 seq_len=96
-if [ ! -d "./log_05292000_40" ]; then
-    mkdir ./log_05292000_40
+if [ ! -d "./log_06012043_40" ]; then
+    mkdir ./log_06012043_40
 fi
 
-if [ ! -d "./log_05292000_40/ETTm1" ]; then
-    mkdir ./log_05292000_40/ETTm1
+if [ ! -d "./log_06012043_40/ETTm1" ]; then
+    mkdir ./log_06012043_40/ETTm1
 fi
-if [ ! -d "./log_05292000_40/ETTh1" ]; then
-    mkdir ./log_05292000_40/ETTh1
+if [ ! -d "./log_06012043_40/ETTh1" ]; then
+    mkdir ./log_06012043_40/ETTh1
 fi
-if [ ! -d "./log_05292000_40/ETTm2" ]; then
-    mkdir ./log_05292000_40/ETTm2
-fi
-
-if [ ! -d "./log_05292000_40/ETTh2" ]; then
-    mkdir ./log_05292000_40/ETTh2
-fi
-if [ ! -d "./log_05292000_40/electricity" ]; then
-    mkdir ./log_05292000_40/electricity
+if [ ! -d "./log_06012043_40/ETTm2" ]; then
+    mkdir ./log_06012043_40/ETTm2
 fi
 
-if [ ! -d "./log_05292000_40/Exchange" ]; then
-    mkdir ./log_05292000_40/Exchange
+if [ ! -d "./log_06012043_40/ETTh2" ]; then
+    mkdir ./log_06012043_40/ETTh2
+fi
+if [ ! -d "./log_06012043_40/electricity" ]; then
+    mkdir ./log_06012043_40/electricity
 fi
 
-if [ ! -d "./log_05292000_40/Solar" ]; then
-    mkdir ./log_05292000_40/Solar
+if [ ! -d "./log_06012043_40/Exchange" ]; then
+    mkdir ./log_06012043_40/Exchange
 fi
 
-if [ ! -d "./log_05292000_40/weather" ]; then
-    mkdir ./log_05292000_40/weather
+if [ ! -d "./log_06012043_40/Solar" ]; then
+    mkdir ./log_06012043_40/Solar
 fi
 
-if [ ! -d "./log_05292000_40/Traffic" ]; then
-    mkdir ./log_05292000_40/Traffic
+if [ ! -d "./log_06012043_40/weather" ]; then
+    mkdir ./log_06012043_40/weather
 fi
 
-if [ ! -d "./log_05292000_40/PEMS03" ]; then
-    mkdir ./log_05292000_40/PEMS03
+if [ ! -d "./log_06012043_40/Traffic" ]; then
+    mkdir ./log_06012043_40/Traffic
 fi
 
-if [ ! -d "./log_05292000_40/PEMS04" ]; then
-    mkdir ./log_05292000_40/PEMS04
+if [ ! -d "./log_06012043_40/PEMS03" ]; then
+    mkdir ./log_06012043_40/PEMS03
 fi
 
-if [ ! -d "./log_05292000_40/PEMS07" ]; then
-    mkdir ./log_05292000_40/PEMS07
+if [ ! -d "./log_06012043_40/PEMS04" ]; then
+    mkdir ./log_06012043_40/PEMS04
 fi
-if [ ! -d "./log_05292000_40/PEMS08" ]; then
-    mkdir ./log_05292000_40/PEMS08
+
+if [ ! -d "./log_06012043_40/PEMS07" ]; then
+    mkdir ./log_06012043_40/PEMS07
+fi
+if [ ! -d "./log_06012043_40/PEMS08" ]; then
+    mkdir ./log_06012043_40/PEMS08
 fi
 #singularity exec --nv /mnt/nfs/data/home/1120231440/home/fuy/fuypycharm1_1.sif  nvidia-smi;\
 
@@ -158,7 +164,7 @@ for pred_len in 96  192 336 720; do
       --use_fourier $use_fourier \
       --front_use_decomp $front_use_decomp \
       --use_x_mark_enc $use_x_mark_enc \
-  > log_05292000_40/ETTh1/'0'_$model_name'_'ETTh1'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+  > log_06012043_40/ETTh1/'0'_$model_name'_'ETTh1'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
 done
 
 
@@ -192,7 +198,7 @@ for pred_len in 96  192 336 720; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/ETTh2/'0'_$model_name'_'ETTh2'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/ETTh2/'0'_$model_name'_'ETTh2'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -227,7 +233,7 @@ for pred_len in 96  192 336 720; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/ETTm1/'0'_$model_name'_'ETTm1'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/ETTm1/'0'_$model_name'_'ETTm1'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -260,7 +266,7 @@ for pred_len in 96  192 336 720; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/ETTm2/'0'_$model_name'_'ETTm2'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/ETTm2/'0'_$model_name'_'ETTm2'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -302,7 +308,7 @@ for pred_len in 96  192 336 720; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/electricity/'0'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/electricity/'0'_$model_name'_'electricity'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -339,7 +345,7 @@ for pred_len in 96 192 336 720; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/Traffic/'0'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/Traffic/'0'_$model_name'_'Traffic'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 fi
@@ -370,7 +376,7 @@ fi
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/Exchange/'0'_$model_name'_'Exchange'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/Exchange/'0'_$model_name'_'Exchange'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -411,7 +417,7 @@ fi
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/weather/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/weather/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -443,7 +449,7 @@ for pred_len in 96 192 336 720 ; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/Solar/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/Solar/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -471,7 +477,7 @@ for pred_len in 12 24 48 96 ; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/PEMS03/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/PEMS03/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 
 
@@ -499,7 +505,7 @@ for pred_len in 12 24 48 96 ; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/PEMS04/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/PEMS04/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 #PEMS07
 for pred_len in 12 24 48 96 ; do
@@ -525,7 +531,7 @@ for pred_len in 12 24 48 96 ; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/PEMS07/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/PEMS07/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
 #PEMS08
 for pred_len in 12 24 48 96 ; do
@@ -550,5 +556,5 @@ for pred_len in 12 24 48 96 ; do
         --use_fourier $use_fourier \
         --front_use_decomp $front_use_decomp \
         --use_x_mark_enc $use_x_mark_enc \
-    > log_05292000_40/PEMS08/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
+    > log_06012043_40/PEMS08/'0'_$model_name'_'weather'_'$seq_len'_'$pred_len'_'0.01.log 2>&1
   done
