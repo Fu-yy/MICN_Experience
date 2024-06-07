@@ -33,6 +33,7 @@ class MICN(nn.Module):
 
         self.projector = nn.Linear(configs.d_model, configs.pred_len, bias=True)
 
+        # self.projector.weight = nn.Parameter((1 / configs.pred_len) * torch.ones([configs.pred_len, configs.d_model]), requires_grad=True)
 
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,

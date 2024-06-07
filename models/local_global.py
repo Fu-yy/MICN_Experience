@@ -94,6 +94,30 @@ class Conv2dMergeBlock(nn.Module):
         return merge_list_result
 
 
+class LocalGlobalEncoder(nn.Module):
+    def __init__(self,configs):
+        super(LocalGlobalEncoder, self).__init__()
+        self.configs = configs
+        self.up_sampling_encoder = torch.nn.ModuleList(
+            [
+                torch.nn.Linear(
+                    configs.d_model // (configs.down_sampling_window ** i),
+                    configs.d_model,
+                )
+                for i in range(configs.down_sampling_layers + 1)
+            ]
+        )
+    def forward(self,B, enc_out_list, x_list):
+        dec_out_list = []
+        x_list = x_list[0]
+        for i, enc_out in zip(range(len(x_list)), enc_out_list):
+            # dec_out = F.interpolate(enc_out.permute(0, 2, 1), size=self.configs.d_model, mode='linear', align_corners=False).permute(
+            #     0, 2, 1)  # align temporal dimension
+            dec_out = self.up_sampling_encoder[i](enc_out.permute(0, 2, 1)).permute(0, 2, 1)  # align temporal dimension
+            dec_out = dec_out.reshape(B, self.configs.enc_in, self.configs.d_model).permute(0, 2,1).contiguous()
+            dec_out_list.append(dec_out)
+        return dec_out_list
+
 
 class Seasonal_Prediction(nn.Module):
     def __init__(self, configs,embedding_size=512, n_heads=8, dropout=0.05, d_layers=1, decomp_kernel=[32], c_out=1,
@@ -113,15 +137,7 @@ class Seasonal_Prediction(nn.Module):
         self.use_fourier = configs.use_fourier
         self.use_space_merge = configs.use_space_merge
         self.merge_inner = Conv2dMergeBlock(in_channels=configs.d_model,out_channels=configs.d_model,num_branch=self.configs.down_sampling_layers + 1)
-        self.up_sampling = torch.nn.ModuleList(
-            [
-                torch.nn.Linear(
-                    configs.d_model // (configs.down_sampling_window ** i),
-                    configs.d_model,
-                )
-                for i in range(configs.down_sampling_layers + 1)
-            ]
-        )
+        self.local_global_enc = LocalGlobalEncoder(configs)
         self.normalize_layers = torch.nn.ModuleList(
             [
                 Normalize(self.configs.enc_in + self.x_mark_len, affine=True, non_norm=True if configs.use_norm == 0 else False)
@@ -158,21 +174,6 @@ class Seasonal_Prediction(nn.Module):
         return downsampled_signal
 
     def __multi_scale_process_inputs(self, x_enc, x_mark_enc):
-        # if self.configs.down_sampling_method == 'max':
-        #     down_pool = torch.nn.MaxPool1d(self.configs.down_sampling_window, return_indices=False)
-        # elif self.configs.down_sampling_method == 'avg':
-        #     down_pool = torch.nn.AvgPool1d(self.configs.down_sampling_window)
-        # elif self.configs.down_sampling_method == 'conv':
-        #     padding = 1 if torch.__version__ >= '1.5.0' else 2
-        #     down_pool = nn.Conv1d(in_channels=self.configs.enc_in, out_channels=self.configs.enc_in,
-        #                           kernel_size=3, padding=padding,
-        #                           stride=self.configs.down_sampling_window,
-        #                           padding_mode='circular',
-        #                           bias=False)
-        # else:
-        #     return x_enc, x_mark_enc
-
-        # B,T,C -> B,C,T
         x_enc = x_enc.permute(0, 2, 1)
 
         x_enc_ori = x_enc
@@ -199,18 +200,6 @@ class Seasonal_Prediction(nn.Module):
 
         return x_enc, x_mark_enc
 
-    def up_sampling_mixing(self, B, enc_out_list, x_list):
-        dec_out_list = []
-        x_list = x_list[0]
-        for i, enc_out in zip(range(len(x_list)), enc_out_list):
-            # dec_out = F.interpolate(enc_out.permute(0, 2, 1), size=self.configs.d_model, mode='linear', align_corners=False).permute(
-            #     0, 2, 1)  # align temporal dimension
-            dec_out = self.up_sampling[i](enc_out.permute(0, 2, 1)).permute(
-                0, 2, 1)  # align temporal dimension
-            dec_out = dec_out.reshape(B, self.x_mark_len + self.configs.enc_in, self.configs.d_model).permute(0, 2, 1).contiguous()
-            dec_out_list.append(dec_out)
-        return dec_out_list
-
     def forward(self, dec):
         dec  = dec.permute(0,2,1)  # 32* 128 * 12（7+5）  5.4改 32 96 128
 
@@ -235,7 +224,7 @@ class Seasonal_Prediction(nn.Module):
                 x_list.append(x)
         enc_out_list = x_list  # 384*128*1   384*64*1   384*32*1   384*16*1
 
-        dec_out_list = self.up_sampling_mixing(B, enc_out_list, x_list)
+        dec_out_list = self.local_global_enc(B, enc_out_list, x_list)
 
         if self.use_space_merge == 1:
             dec_out = self.merge_inner(dec_out_list)
@@ -243,11 +232,6 @@ class Seasonal_Prediction(nn.Module):
             dec_out = torch.stack(dec_out_list, dim=-1).sum(-1)
 
 
-        # t = multi
-        # merge
-
-        # result = torch.stack(multi, dim=-1).sum(-1)
-        # result = self.merge_outer(multi)
         result = self.normalize_layers[0](dec_out, 'denorm')
         result = result.permute(0,2,1).contiguous()
 
